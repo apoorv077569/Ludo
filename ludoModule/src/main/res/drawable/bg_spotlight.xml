@@ -1,0 +1,5 @@
+<!-- res/drawable/bg_spotlight.xml -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <gradient android:type="radial" android:gradientRadius="300dp"
+        android:startColor="#66FFD700" android:endColor="@android:color/transparent"/>
+</shape>

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_dialog_rounded"
+    android:padding="16dp">
+
+    <!-- SELECT TOKEN -->
+    <TextView
+        android:id="@+id/tvSelectToken"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SELECT TOKEN"
+        android:textStyle="bold"
+        android:textSize="18sp"
+        android:textColor="#FFCC00"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="8dp"/>
+
+    <LinearLayout
+        android:id="@+id/tokenContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <ImageView
+            android:id="@+id/token1"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/yellow_token"
+            android:padding="6dp"/>
+
+        <ImageView
+            android:id="@+id/token2"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/blue_token"
+            android:padding="6dp"
+            android:layout_marginStart="12dp"/>
+
+        <ImageView
+            android:id="@+id/token3"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/red_token"
+            android:padding="6dp"
+            android:layout_marginStart="12dp"/>
+
+        <ImageView
+            android:id="@+id/token4"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/green_token"
+            android:padding="6dp"
+            android:layout_marginStart="12dp"/>
+    </LinearLayout>
+
+    <!-- SELECT GAME -->
+    <TextView
+        android:id="@+id/tvSelectGame"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/select_game"
+        android:textStyle="bold"
+        android:textSize="18sp"
+        android:textColor="#FFCC00"
+        android:layout_marginTop="16dp"
+        android:layout_gravity="center_horizontal"/>
+
+    <RadioGroup
+        android:id="@+id/gameOptions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <RadioButton
+            android:id="@+id/rbClassic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CLASSIC"
+            android:checked="true"
+            android:textSize="16sp"
+            android:textColor="#FFF"/>
+
+        <RadioButton
+            android:id="@+id/rbPopular"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="POPULAR"
+            android:textSize="16sp"
+            android:textColor="#FFF"/>
+    </RadioGroup>
+
+    <!-- CREATE ROOM BUTTON -->
+    <Button
+        android:id="@+id/btnCreateRoom"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Create Room"
+        android:textSize="18sp"
+        android:backgroundTint="#FFCC00"
+        android:textColor="#000"
+        android:layout_marginTop="16dp"
+        android:padding="10dp"/>
+</LinearLayout>
