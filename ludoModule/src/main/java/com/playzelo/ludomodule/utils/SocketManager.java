@@ -12,6 +12,16 @@ import java.util.Arrays;
 
 public class SocketManager {
     private static Socket mSocket;
+    private static OnMessageReceivedListener mListener;
+
+    // Interface to define the callback for received messages
+    public interface OnMessageReceivedListener {
+        void onMessageReceived(String message);
+    }
+
+    public static void setOnMessageReceivedListener(OnMessageReceivedListener listener) {
+        mListener = listener;
+    }
 
     public static void initSocket(String serverUrl) {
         try {

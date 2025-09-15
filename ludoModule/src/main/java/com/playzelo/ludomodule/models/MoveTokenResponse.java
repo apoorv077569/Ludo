@@ -29,6 +29,9 @@ public class MoveTokenResponse {
     @SerializedName("dice")
     private int dice;
 
+    @SerializedName("score")
+    private int score;
+
     @SerializedName("gameOver")
     private boolean gameOver;
 
@@ -62,6 +65,9 @@ public class MoveTokenResponse {
 
     public NextPlayer getNextPlayer() {
         return nextPlayer;
+    }
+    public int score(){
+        return score;
     }
 
     public int getDice() {
@@ -114,6 +120,8 @@ public class MoveTokenResponse {
 
         @SerializedName("color")
         private String color;
+        @SerializedName("score")
+        private int score;
 
         public String getUserId() {
             return userId;
@@ -121,6 +129,9 @@ public class MoveTokenResponse {
 
         public String getColor() {
             return color;
+        }
+        public int getScore(){
+            return score;
         }
     }
 }
