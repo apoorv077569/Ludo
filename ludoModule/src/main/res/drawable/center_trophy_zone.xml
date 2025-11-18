@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- res/drawable/center_trophy_zone.xml -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="#FFFFFF"/>
-    <corners android:radius="8dp"/>
-    <stroke android:width="2dp" android:color="#FFD700"/>
-</shape>

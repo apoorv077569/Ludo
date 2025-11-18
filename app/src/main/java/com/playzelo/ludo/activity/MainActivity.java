@@ -1,109 +1,71 @@
 package com.playzelo.ludo.activity;
 
+import android.animation.ValueAnimator;
 import android.content.Intent;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.Toast;
-
+import android.util.Log;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
-
-import com.airbnb.lottie.LottieAnimationView;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.playzelo.ludo.fragments.AddMoneyFragment;
 import com.playzelo.ludo.R;
-import com.playzelo.ludo.fragments.WalletFragment;
+import com.playzelo.ludo.databinding.ActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity {
 
-    private BottomNavigationView bottomNavigation;
-    private LottieAnimationView lottieDice, lottieConflict;
+    private ActivityMainBinding binding;
+    private String username,email,token;
+    private String authToken;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_ludo_main); // Your layout file
+        binding = ActivityMainBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
-        // Lottie Animations
-        lottieDice = findViewById(R.id.lottieDice);
-        lottieConflict = findViewById(R.id.lottieConflict);
 
-        lottieDice.playAnimation();
-        lottieConflict.playAnimation();
+        // Retrieve user data from Intent
+        Intent intent = getIntent();
+        if (intent != null) {
+            username = intent.getStringExtra("username");
+            email = intent.getStringExtra("email");
+            token = intent.getStringExtra("token");
+        }
 
-        // Bottom Navigation Logic
-        bottomNavigation = findViewById(R.id.bottomNavigation);
-        bottomNavigation.setSelectedItemId(R.id.nav_home);
+        Log.d("UserData", "Username: " + username);
+        Log.d("UserData", "Email: " + email);
+        Log.d("UserData", "Token: " + token);
 
-        bottomNavigation.setOnItemSelectedListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.nav_home) {
-                Toast.makeText(this, "Home clicked", Toast.LENGTH_SHORT).show();
-                return true;
 
-            } else if (itemId == R.id.nav_refer) {
-                Toast.makeText(this, "Refer clicked", Toast.LENGTH_SHORT).show();
-                // Replace with actual Refer Fragment if needed
-                return true;
+        // Background Zoom Animation
+        Animation zoomAnim = AnimationUtils.loadAnimation(this, R.anim.zoom_in_out);
+        binding.bgImage.startAnimation(zoomAnim);
 
-            } else if (itemId == R.id.nav_account) {
-                Toast.makeText(this, "Account clicked", Toast.LENGTH_SHORT).show();
-                // Replace with actual Account Fragment if needed
-                return true;
-            }
-            return false;
+
+        // Darken effect during zoom out
+        ValueAnimator darkenAnimator = ValueAnimator.ofFloat(1f, 0.7f);
+        darkenAnimator.setDuration(2000);
+        darkenAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        darkenAnimator.setRepeatMode(ValueAnimator.REVERSE);
+
+        darkenAnimator.addUpdateListener(animation -> {
+            float brightness = (float) animation.getAnimatedValue();
+            ColorMatrix cm = new ColorMatrix(new float[]{
+                    brightness, 0, 0, 0, 0,
+                    0, brightness, 0, 0, 0,
+                    0, 0, brightness, 0, 0,
+                    0, 0, 0, 1, 0
+            });
+            binding.bgImage.setColorFilter(new ColorMatrixColorFilter(cm));
         });
+        darkenAnimator.start();
 
-        // Top Wallet Button
-        LinearLayout btnWalletBalanceContainer = findViewById(R.id.btnWalletBalanceContainer);
-        btnWalletBalanceContainer.setOnClickListener(v -> openWalletFragment());
+        binding.lottieDice.playAnimation();
 
-        // Top "Deposit Now" Button
-        LinearLayout btnDepositNow = findViewById(R.id.btnDepositNow);
-        btnDepositNow.setOnClickListener(v -> openAddMoneyFragment());
-
-        // Play Now Button in Banner
-        Button btnPlayNow = findViewById(R.id.btnPlayNow);
-        btnPlayNow.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, TournamentsActivity.class);
-            startActivity(intent);
+        binding.btnPlayNow.setOnClickListener(v -> {
+            Intent next = new Intent(MainActivity.this, TournamentsActivity.class);
+            startActivity(next);
         });
-
-        // "Deposit Now" button inside horizontal card
-        // This card button is a child inside ScrollView, so it's directly accessible if declared properly
-        Button cardDepositNowBtn = findViewById(R.id.cardDepositNowButton); // We'll add this ID next
-        if (cardDepositNowBtn != null) {
-            cardDepositNowBtn.setOnClickListener(v -> openAddMoneyFragment());
-        }
-
-        Button cardPlayNowBtn = findViewById(R.id.cardPlayNowButton); // We'll add this ID next
-        if (cardPlayNowBtn != null) {
-            cardPlayNowBtn.setOnClickListener(v -> openWalletFragment());
-        }
-
-        Button cardPlayNowBtn1 = findViewById(R.id.cardPlayNowButton1); // We'll add this ID next
-        if (cardPlayNowBtn1 != null) {
-            cardPlayNowBtn1.setOnClickListener(v -> openWalletFragment());
-        }
-
-    }
-
-    private void openWalletFragment() {
-        Fragment walletFragment = new WalletFragment();
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.fragment_container, walletFragment)
-                .addToBackStack(null)
-                .commit();
-    }
-
-    private void openAddMoneyFragment() {
-        Fragment addMoneyFragment = new AddMoneyFragment();
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.fragment_container, addMoneyFragment)
-                .addToBackStack(null)
-                .commit();
     }
 }

@@ -15,7 +15,6 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.playzelo.ludo.R;
-import com.playzelo.ludo.WithdrawDialog;
 
 public class WalletFragment extends Fragment {
 
@@ -39,28 +38,6 @@ public class WalletFragment extends Fragment {
         btnWithdraw = view.findViewById(R.id.btnWithdraw);
         ImageView ivBack = view.findViewById(R.id.ivBack);
         ivBack.setOnClickListener(v -> requireActivity().onBackPressed());
-
-
-        btnAddCash.setOnClickListener(v -> openAddMoneyFragment());
-
-        btnWithdraw.setOnClickListener(v -> {
-            int currentBalance = 1200; // You can fetch this from backend later
-
-            WithdrawDialog dialog = new WithdrawDialog(requireContext(), currentBalance, new WithdrawDialog.WithdrawCallback() {
-                @Override
-                public void onWithdraw(String amount, boolean viaBank) {
-                    Toast.makeText(getContext(), "Withdrawing ₹" + amount + (viaBank ? " to Bank" : " via UPI"), Toast.LENGTH_SHORT).show();
-                    // You can also call backend API here
-                }
-            });
-            dialog.show();
-        });
     }
 
-    private void openAddMoneyFragment() {
-        FragmentTransaction transaction = requireActivity().getSupportFragmentManager().beginTransaction();
-        transaction.replace(R.id.fragmentContainer, new AddMoneyFragment());
-        transaction.addToBackStack(null);
-        transaction.commit();
-    }
 }

@@ -11,7 +11,6 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.airbnb.lottie.LottieAnimationView;
-import com.playzelo.ludo.LoginActivity;
 import com.playzelo.ludo.R;
 
 public class SplashActivity extends AppCompatActivity {
@@ -54,7 +53,7 @@ public class SplashActivity extends AppCompatActivity {
 
         // Move to next screen after 6 seconds
         new Handler().postDelayed(() -> {
-            startActivity(new Intent(SplashActivity.this, com.playzelo.ludomodule.activity.SplashActivity.class));
+            startActivity(new Intent(SplashActivity.this, LoginActivity.class));
             finish();
         }, 6000);
     }

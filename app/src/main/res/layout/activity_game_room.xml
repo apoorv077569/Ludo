@@ -1,48 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/game_room_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#001B5D">
+    android:background="#001B5D"
+    android:keepScreenOn="true"
+    >
 
-    <!-- 🔙 Back Button OUTSIDE the top bar -->
     <ImageView
         android:id="@+id/backButton"
         android:layout_width="36dp"
         android:layout_height="36dp"
-        android:layout_marginTop="12dp"
         android:layout_marginStart="12dp"
+        android:layout_marginTop="12dp"
         android:src="@drawable/ic_back"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-
-    <!-- 🔵 TOP BAR -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/topBarLayout"
         android:layout_width="0dp"
-        android:layout_height="110dp"
-        android:layout_marginTop="8dp"
+        android:layout_height="140dp"
         android:background="#001B5D"
-        app:layout_constraintTop_toBottomOf="@id/backButton"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/backButton">
 
-        <!-- 🏆 Prize Pool -->
         <LinearLayout
             android:id="@+id/prizePoolCard"
             android:layout_width="160dp"
             android:layout_height="50dp"
-            android:orientation="horizontal"
-            android:gravity="center"
             android:background="@drawable/bg_prizepool_card"
+            android:gravity="center"
+            android:orientation="horizontal"
             android:padding="6dp"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="8dp">
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
             <ImageView
                 android:layout_width="24dp"
@@ -69,98 +64,94 @@
                     android:layout_height="wrap_content"
                     android:text="₹0.6"
                     android:textColor="#FFD700"
-                    android:textStyle="bold"
-                    android:textSize="14sp" />
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- 👤 Left Player -->
-        <LinearLayout
-            android:id="@+id/leftPlayerLayout"
+        <ImageView
+            android:id="@+id/leftPlayerAvatar"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="30dp"
+            android:src="@drawable/ic_ring"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <TextView
+            android:id="@+id/leftPlayerName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginStart="16dp"
+            android:layout_marginTop="4dp"
+            android:text=""
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            app:layout_constraintEnd_toEndOf="@id/leftPlayerAvatar"
+            app:layout_constraintStart_toStartOf="@id/leftPlayerAvatar"
+            app:layout_constraintTop_toBottomOf="@id/leftPlayerAvatar" />
+
+        <ImageView
+            android:id="@+id/rightPlayerAvatar"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="30dp"
+            android:src="@drawable/ic_ring"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
+            app:layout_constraintEnd_toEndOf="parent" />
 
-            <TextView
-                android:id="@+id/leftPlayerName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="john"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+        <TextView
+            android:id="@+id/rightPlayerName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text=""
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            app:layout_constraintEnd_toEndOf="@id/rightPlayerAvatar"
+            app:layout_constraintStart_toStartOf="@id/rightPlayerAvatar"
+            app:layout_constraintTop_toBottomOf="@id/rightPlayerAvatar" />
 
-            <ImageView
-                android:id="@+id/leftPlayerAvatar"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
-                android:src="@drawable/ic_ring" />
-        </LinearLayout>
-
-        <!-- 🎲 Left Dice -->
         <ImageView
             android:id="@+id/topDiceLeft"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:layout_marginStart="70dp"
+            android:layout_marginBottom="35dp"
             android:src="@drawable/dice_white"
-            android:layout_marginStart="0dp"
-            android:layout_marginBottom="10dp"
-            android:layout_marginTop="40dp"
+            android:alpha="0.5"
+            android:enabled="false"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toEndOf="@id/leftPlayerLayout" />
+            app:layout_constraintStart_toStartOf="parent" />
 
-        <!-- 🎲 Right Dice -->
         <ImageView
             android:id="@+id/topDiceRight"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:layout_marginEnd="70dp"
+            android:layout_marginBottom="35dp"
             android:src="@drawable/dice_white"
-            android:layout_marginEnd="0dp"
-            android:layout_marginBottom="10dp"
+            android:alpha="0.5"
+            android:enabled="false"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/rightPlayerLayout" />
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- 👤 Right Player -->
-        <LinearLayout
-            android:id="@+id/rightPlayerLayout"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginEnd="16dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <TextView
-                android:id="@+id/rightPlayerName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="dow"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-
-            <ImageView
-                android:id="@+id/rightPlayerAvatar"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
-                android:src="@drawable/ic_ring" />
-        </LinearLayout>
-
-        <!-- ⏱ Timer -->
         <LinearLayout
             android:id="@+id/timerContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
             android:gravity="center"
+            android:orientation="horizontal"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
 
             <ImageView
                 android:layout_width="24dp"
@@ -171,349 +162,115 @@
                 android:id="@+id/timerText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
                 android:text="09:52"
                 android:textColor="#00FF00"
-                android:textSize="16sp"
-                android:layout_marginStart="4dp" />
+                android:textSize="16sp" />
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- 🟡 LUDO BOARD ZONE -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/rootLayout"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:clipChildren="false"
         android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/topBarLayout"
         app:layout_constraintBottom_toTopOf="@id/bottomPlayers"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/topBarLayout">
 
-        <!-- INSIDE GRIDLAYOUT: Place all tokens correctly using row/column -->
-
-        <GridLayout
-            android:id="@+id/ludoGrid"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:alignmentMode="alignMargins"
-            android:columnCount="15"
-            android:rowCount="15"
-            android:padding="4dp"
-            app:layout_constraintTop_toTopOf="parent"
+        <include
+            android:id="@+id/ludoLayout"
+            layout="@layout/ludo_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <!-- RED TOKENS -->
-            <ImageView
-                android:id="@+id/red_goti_1"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="2"
-                android:layout_column="11"
-                android:layout_gravity="center"
-                android:src="@drawable/red_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/red_goti_2"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="2"
-                android:layout_column="13"
-                android:layout_gravity="center"
-                android:src="@drawable/red_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/red_goti_3"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="4"
-                android:layout_column="11"
-                android:layout_gravity="center"
-                android:src="@drawable/red_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/red_goti_4"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="4"
-                android:layout_column="13"
-                android:layout_gravity="center"
-                android:src="@drawable/red_token"
-                android:elevation="8dp" />
-
-            <!-- GREEN TOKENS -->
-            <ImageView
-                android:id="@+id/green_goti_1"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="10"
-                android:layout_column="11"
-                android:layout_gravity="center"
-                android:src="@drawable/green_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/green_goti_2"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="10"
-                android:layout_column="13"
-                android:layout_gravity="center"
-                android:src="@drawable/green_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/green_goti_3"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="12"
-                android:layout_column="11"
-                android:layout_gravity="center"
-                android:src="@drawable/green_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/green_goti_4"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="12"
-                android:layout_column="13"
-                android:layout_gravity="center"
-                android:src="@drawable/green_token"
-                android:elevation="8dp" />
-
-            <!-- YELLOW TOKENS -->
-            <ImageView
-                android:id="@+id/yellow_goti_1"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="10"
-                android:layout_column="1"
-                android:layout_gravity="center"
-                android:src="@drawable/yellow_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/yellow_goti_2"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="10"
-                android:layout_column="3"
-                android:layout_gravity="center"
-                android:src="@drawable/yellow_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/yellow_goti_3"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="12"
-                android:layout_column="1"
-                android:layout_gravity="center"
-                android:src="@drawable/yellow_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/yellow_goti_4"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="12"
-                android:layout_column="3"
-                android:layout_gravity="center"
-                android:src="@drawable/yellow_token"
-                android:elevation="8dp" />
-
-            <!-- BLUE TOKENS -->
-            <ImageView
-                android:id="@+id/blue_goti_1"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="2"
-                android:layout_column="1"
-                android:layout_gravity="center"
-                android:src="@drawable/blue_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/blue_goti_2"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="2"
-                android:layout_column="3"
-                android:layout_gravity="center"
-                android:src="@drawable/blue_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/blue_goti_3"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="4"
-                android:layout_column="1"
-                android:layout_gravity="center"
-                android:src="@drawable/blue_token"
-                android:elevation="8dp" />
-
-            <ImageView
-                android:id="@+id/blue_goti_4"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_row="4"
-                android:layout_column="3"
-                android:layout_gravity="center"
-                android:src="@drawable/blue_token"
-                android:elevation="8dp" />
-        </GridLayout>
-
-        <!-- Score Zones (for circle overlays in Java) -->
-        <TextView
-            android:id="@+id/zoneRed"
-            android:layout_width="60dp"
-            android:layout_height="60dp"
-            android:layout_marginStart="40dp"
-            android:layout_marginTop="80dp"
-            android:background="@drawable/bg_white_circle"
-            android:gravity="center"
-            android:text="Score 0"
-            android:textColor="#E9A319"
-            android:textSize="18sp"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <TextView
-            android:id="@+id/zoneBlue"
-            android:layout_width="60dp"
-            android:layout_height="60dp"
-            android:layout_marginEnd="40dp"
-            android:layout_marginTop="80dp"
-            android:background="@drawable/bg_white_circle"
-            android:gravity="center"
-            android:text="Score 0"
-            android:textColor="#E9A319"
-            android:textSize="18sp"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/bottomPlayers"
+        android:layout_width="0dp"
+        android:layout_height="140dp"
+        android:background="#001B5D"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
-        <TextView
-            android:id="@+id/zoneGreen"
-            android:layout_width="60dp"
-            android:layout_height="60dp"
-            android:layout_marginStart="40dp"
-            android:layout_marginBottom="80dp"
-            android:background="@drawable/bg_white_circle"
-            android:gravity="center"
-            android:text="Score 0"
-            android:textColor="#E9A319"
-            android:textSize="18sp"
+        <ImageView
+            android:id="@+id/bottomLeftAvatar"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="50dp"
+            android:src="@drawable/ic_ring"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
 
         <TextView
-            android:id="@+id/zoneYellow"
-            android:layout_width="60dp"
-            android:layout_height="60dp"
-            android:layout_marginEnd="40dp"
-            android:layout_marginBottom="80dp"
-            android:background="@drawable/bg_white_circle"
-            android:gravity="center"
-            android:text="Score 0"
-            android:textColor="#E9A319"
-            android:textSize="18sp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <!-- 🔻 BOTTOM BAR -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/bottomPlayers"
-        android:layout_width="0dp"
-        android:layout_height="120dp"
-        android:background="#0E2A47"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <!-- 🔴 Left Player -->
-        <LinearLayout
-            android:id="@+id/bottomLeftAvatarLayout"
+            android:id="@+id/bottomLeftPlayerName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginStart="16dp"
+            android:layout_marginTop="4dp"
+            android:text=""
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            app:layout_constraintEnd_toEndOf="@id/bottomLeftAvatar"
+            app:layout_constraintStart_toStartOf="@id/bottomLeftAvatar"
+            app:layout_constraintTop_toBottomOf="@id/bottomLeftAvatar" />
+
+        <ImageView
+            android:id="@+id/bottomRightAvatar"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="50dp"
+            android:src="@drawable/ic_ring"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
+            app:layout_constraintEnd_toEndOf="parent" />
 
-            <ImageView
-                android:id="@+id/bottomLeftAvatar"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:src="@drawable/ic_ring" />
+        <TextView
+            android:id="@+id/bottomRightPlayerName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text=""
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            app:layout_constraintEnd_toEndOf="@id/bottomRightAvatar"
+            app:layout_constraintStart_toStartOf="@id/bottomRightAvatar"
+            app:layout_constraintTop_toBottomOf="@id/bottomRightAvatar" />
 
-            <TextView
-                android:id="@+id/bottomLeftPlayerName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Rajeev"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:layout_marginTop="4dp" />
-        </LinearLayout>
-
-        <!-- 🎲 Left Dice -->
         <ImageView
             android:id="@+id/leftDice"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:layout_marginStart="70dp"
+            android:layout_marginBottom="60dp"
             android:src="@drawable/dice_white"
+            android:alpha="0.5"
+            android:enabled="false"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toEndOf="@id/bottomLeftAvatarLayout"
-            android:layout_marginStart="12dp"
-            android:layout_marginBottom="32dp" />
+            app:layout_constraintStart_toStartOf="parent" />
 
-        <!-- 🎲 Right Dice -->
         <ImageView
             android:id="@+id/rightDice"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:layout_marginEnd="70dp"
+            android:layout_marginBottom="60dp"
             android:src="@drawable/dice_white"
+            android:alpha="0.5"
+            android:enabled="false"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/bottomRightAvatarLayout"
-            android:layout_marginEnd="12dp"
-            android:layout_marginBottom="32dp" />
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- 🔵 Right Player -->
-        <LinearLayout
-            android:id="@+id/bottomRightAvatarLayout"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginEnd="16dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <ImageView
-                android:id="@+id/bottomRightAvatar"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:src="@drawable/ic_ring" />
-
-            <TextView
-                android:id="@+id/bottomRightPlayerName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Poul"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:layout_marginTop="4dp" />
-        </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

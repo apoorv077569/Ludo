@@ -1,347 +1,1125 @@
 package com.playzelo.ludo.activity;
 
-import android.graphics.Color;
-import android.graphics.Typeface;
+import static androidx.fragment.app.FragmentManager.TAG;
+
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.annotation.SuppressLint;
 import android.media.MediaPlayer;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.os.Handler;
-import android.os.VibrationEffect;
-import android.os.Vibrator;
-import android.util.TypedValue;
-import android.view.Gravity;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.FrameLayout;
-import android.widget.GridLayout;
+import android.view.animation.BounceInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.content.ContextCompat;
 
-import com.playzelo.ludo.R;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.playzelo.ludomodule.R;
+import com.playzelo.ludomodule.apiservice.LudoApiHelper;
+import com.playzelo.ludomodule.databinding.ActivityLudoGameRoomBinding;
+import com.playzelo.ludomodule.databinding.LudoLayoutBinding;
+import com.playzelo.ludomodule.models.LudoRoomResponse;
+import com.playzelo.ludomodule.models.MoveTokenRequest;
+import com.playzelo.ludomodule.models.MoveTokenResponse;
+import com.playzelo.ludomodule.utils.SocketManager;
+
+import org.jetbrains.annotations.Contract;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
+import java.util.Locale;
+import java.util.Map;
 
-public class GameRoomActivity extends AppCompatActivity {
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
-    TextView timerText, prizePoolText;
-    GridLayout ludoGrid;
-    ImageView topDiceLeft, topDiceRight, bottomDiceLeft, bottomDiceRight;
-    MediaPlayer diceSound;
-    Random random = new Random();
+public class GameRoomActivity extends AppCompatActivity implements SocketManager.OnMessageReceivedListener {
 
-    ImageView[] redTokens, greenTokens, yellowTokens, blueTokens;
-    int[] redPositions, greenPositions, yellowPositions, bluePositions;
-    int lastRolledNumber = -1;
-    String currentZone = "";
-    int currentTurn = 0;
+    // Constants
+    private static final int DICE_ANIMATION_DURATION = 300;
+    private static final int TOKEN_COUNT = 4;
+    private static final int STARTING_DICE_VALUE = 6;
+    private static final String LOG_TAG = "LudoGame";
 
-    int cellSize = 60;
-    List<int[]> redPath = new ArrayList<>();
-    List<int[]> greenPath = new ArrayList<>();
-    List<int[]> yellowPath = new ArrayList<>();
-    List<int[]> bluePath = new ArrayList<>();
+    // Multi-token support
+    private final Map<View, List<Token>> cellTokensMap = new HashMap<>();
+
+    private String userId, authToken, username;
+    private double entry_fee, prize_pool;
+    private Animation pulseAnimation;
+    private ActivityLudoGameRoomBinding binding;
+    private LudoLayoutBinding ludoBinding;
+
+    public enum PlayerColor {
+        YELLOW("yellow", 0), GREEN("green", 1), RED("red", 2), BLUE("blue", 3);
+
+        private final int index;
+        private final String colorName;
+
+        PlayerColor(String colorName, int index) {
+            this.colorName = colorName;
+            this.index = index;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+
+        public String getColorName() {
+            return colorName;
+        }
+
+        public static PlayerColor fromString(String colorName) {
+            for (PlayerColor pc : PlayerColor.values()) {
+                if (pc.colorName.equalsIgnoreCase(colorName)) {
+                    return pc;
+                }
+            }
+            throw new IllegalArgumentException("Unknown player color: " + colorName);
+        }
+    }
+
+    // Game state
+    private int currentDiceValue = 0;
+    private MediaPlayer diceSound;
+    private AnimatorSet diceAnimator;
+    private String roomId;
+    private ImageView[][] tokenViews;
+
+    // UI elements
+    private ImageView[] diceViews = new ImageView[4];
+    private final Player[] players = new Player[4];
+
+    // Dice drawable resources
+    private static final int[] DICE_DRAWABLES = {
+            R.drawable.dice_1, R.drawable.dice_2, R.drawable.dice_3,
+            R.drawable.dice_4, R.drawable.dice_5, R.drawable.dice_6
+    };
+    private final TextView[] playerInfoTextViews = new TextView[4];
+
+    // Token class
+    static class Token {
+        ImageView view;
+        int position = -1; // -1 = not on board yet
+        View currentCell = null; // Track current cell
+
+        Token(ImageView view) {
+            this.view = view;
+        }
+    }
+
+    // Player class to encapsulate player data
+    static class Player {
+        String userId;
+        String username;
+        Token[] tokens = new Token[TOKEN_COUNT];
+        View[] path;
+        PlayerColor color;
+
+        Player(PlayerColor color, View[] path) {
+            this.color = color;
+            this.path = path;
+        }
+
+        void setPlayerDetails(String userId, String username) {
+            this.userId = userId;
+            this.username = username;
+        }
+
+        PlayerColor getColor() {
+            return this.color;
+        }
+
+        void setTokensEnabled(boolean enabled) {
+            for (Token token : tokens) {
+                if (token != null && token.view != null) {
+                    token.view.setEnabled(enabled);
+                }
+            }
+        }
+
+        void clearTokenHighlights() {
+            for (Token token : tokens) {
+                if (token != null && token.view != null) {
+                    token.view.setBackground(null);
+                }
+            }
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_ludo_game_room);
+        binding = ActivityLudoGameRoomBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+        ludoBinding = LudoLayoutBinding.bind(binding.ludoLayout.getRoot());
+        initializeSound();
+        initializeDice();
 
-        timerText = findViewById(R.id.timerText);
-        prizePoolText = findViewById(R.id.prizePool);
-        ludoGrid = findViewById(R.id.ludoGrid);
+        // Get player data from Intent
+        userId = getIntent().getStringExtra("userId");
+        username = getIntent().getStringExtra("username");
+        authToken = getIntent().getStringExtra("auth_token");
+        roomId = getIntent().getStringExtra("roomId");
+        entry_fee = getIntent().getDoubleExtra("entryFee", 0);
+        prize_pool = getIntent().getDoubleExtra("winPrize", 0);
 
-        topDiceLeft = findViewById(R.id.topDiceLeft);
-        topDiceRight = findViewById(R.id.topDiceRight);
-        bottomDiceLeft = findViewById(R.id.leftDice);
-        bottomDiceRight = findViewById(R.id.rightDice);
+        List<String> playerIds = getIntent().getStringArrayListExtra("playerIds");
+        List<String> playerColors = getIntent().getStringArrayListExtra("playerColors");
 
-        prizePoolText.setText("\u20B95.1");
-        diceSound = MediaPlayer.create(this, com.playzelo.ludomodule.R.raw.dice_roll_mp3);
+        initializePlayers(playerIds, playerColors);
+        Log.d(LOG_TAG, "Username: " + username + " userId: " + userId + " Token: " + authToken + " roomId: " + roomId);
+        initializePlayerInfoTextViews();
+        diceViews = new ImageView[]{binding.leftDice, binding.topDiceLeft, binding.topDiceRight, binding.rightDice};
+        binding.backButton.setOnClickListener(v -> leaveRoom());
+        binding.prizePool.setText(String.valueOf(prize_pool));
+        CountDownTimer countDownTimer = getCountDownTimer();
+        countDownTimer.start();
+    }
 
-        redTokens = new ImageView[]{findViewById(R.id.red_goti_1), findViewById(R.id.red_goti_2), findViewById(R.id.red_goti_3), findViewById(R.id.red_goti_4)};
-        greenTokens = new ImageView[]{findViewById(R.id.green_goti_1), findViewById(R.id.green_goti_2), findViewById(R.id.green_goti_3), findViewById(R.id.green_goti_4)};
-        yellowTokens = new ImageView[]{findViewById(R.id.yellow_goti_1), findViewById(R.id.yellow_goti_2), findViewById(R.id.yellow_goti_3), findViewById(R.id.yellow_goti_4)};
-        blueTokens = new ImageView[]{findViewById(R.id.blue_goti_1), findViewById(R.id.blue_goti_2), findViewById(R.id.blue_goti_3), findViewById(R.id.blue_goti_4)};
 
-        redPositions = new int[4];
-        greenPositions = new int[4];
-        yellowPositions = new int[4];
-        bluePositions = new int[4];
+    private void initializeSound() {
+        diceSound = MediaPlayer.create(this, R.raw.dice_roll);
+    }
 
-        generateLudoBoard();
-        generatePaths();
-        addTokensToGrid();
-        setDiceClickListeners();
-        startGameTimer();
+    private void initializeDice() {
+        // Map dice views to array for easier management
+        diceViews[PlayerColor.YELLOW.getIndex()] = binding.leftDice;
+        diceViews[PlayerColor.GREEN.getIndex()] = binding.topDiceLeft;
+        diceViews[PlayerColor.RED.getIndex()] = binding.topDiceRight;
+        diceViews[PlayerColor.BLUE.getIndex()] = binding.rightDice;
 
-        ConstraintLayout rootLayout = findViewById(R.id.rootLayout);
-        if (rootLayout != null) {
-            rootLayout.post(this::addZoneScoreLabels);
+        // Set click listeners for all dice
+        for (PlayerColor color : PlayerColor.values()) {
+            final PlayerColor playerColor = color;
+            diceViews[color.getIndex()].setOnClickListener(v -> rollDice(playerColor));
         }
     }
 
-    private void generatePaths() {
-        for (int i = 1; i <= 6; i++) greenPath.add(new int[]{6, i});
-        for (int i = 2; i <= 7; i++) redPath.add(new int[]{i, 8});
-        for (int i = 13; i >= 8; i--) yellowPath.add(new int[]{i, 6});
-        for (int i = 13; i >= 8; i--) bluePath.add(new int[]{8, i});
-    }
+    private void initializePlayers(List<String> playerIds, List<String> playerColors) {
+        View[][] paths = {
+                getYellowPath(), getGreenPath(), getRedPath(), getBluePath()
+        };
 
-    private void moveTokenAlongPath(ImageView token, int[] positionArray, int index, List<int[]> pathList, int steps) {
-        disableAllDice();
-        int oldPos = positionArray[index];
-        int newPos = oldPos + steps;
-        if (newPos >= pathList.size()) return;
+        ImageView[][] tokenViews = {
+                {ludoBinding.yellowToken1, ludoBinding.yellowToken2, ludoBinding.yellowToken3, ludoBinding.yellowToken4},
+                {ludoBinding.greenToken1, ludoBinding.greenToken2, ludoBinding.greenToken3, ludoBinding.greenToken4},
+                {ludoBinding.redToken1, ludoBinding.redToken2, ludoBinding.redToken3, ludoBinding.redToken4},
+                {ludoBinding.blueToken1, ludoBinding.blueToken2, ludoBinding.blueToken3, ludoBinding.blueToken4}
+        };
 
-        positionArray[index] = newPos;
-        int[] cell = pathList.get(newPos);
-        int cellSizePx = ludoGrid.getWidth() / 15;
-        float tx = cell[1] * cellSizePx;
-        float ty = cell[0] * cellSizePx;
-        token.animate().translationX(tx).translationY(ty).setDuration(300).start();
-    }
-
-    private void disableAllDice() {
-        topDiceLeft.setEnabled(false);
-        topDiceRight.setEnabled(false);
-        bottomDiceLeft.setEnabled(false);
-        bottomDiceRight.setEnabled(false);
-    }
-
-    private void setDiceClickListeners() {
-        ImageView[] diceArray = {topDiceLeft, topDiceRight, bottomDiceLeft, bottomDiceRight};
-        for (ImageView dice : diceArray) {
-            dice.setOnClickListener(v -> rollDice(dice));
-        }
-    }
-
-    private void rollDice(ImageView diceView) {
-        diceView.setEnabled(false);
-        if (diceSound != null) diceSound.start();
-        diceView.startAnimation(AnimationUtils.loadAnimation(this, R.anim.dice_bounce));
-
-        Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-        if (vibrator != null && vibrator.hasVibrator()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE));
-            } else {
-                vibrator.vibrate(100);
-            }
+        if (playerIds == null || playerColors == null || playerIds.size() != playerColors.size()) {
+            Log.e(LOG_TAG, "Invalid player data received from Intent");
+            return;
         }
 
-        new Handler().postDelayed(() -> {
-            lastRolledNumber = random.nextInt(6) + 1;
-            int resId = getResources().getIdentifier("dice_" + lastRolledNumber, "drawable", getPackageName());
-            diceView.setImageResource(resId != 0 ? resId : R.drawable.ic_dice);
-            diceView.setEnabled(true);
+        // Loop through the received player data
+        for (int i = 0; i < playerIds.size(); i++) {
+            String id = playerIds.get(i);
+            String colorString = playerColors.get(i);
 
-            if (diceView == topDiceLeft) {
-                currentZone = "green";
-                enableTokenClicks(greenTokens, greenPositions, greenPath);
-            } else if (diceView == topDiceRight) {
-                currentZone = "yellow";
-                enableTokenClicks(yellowTokens, yellowPositions, yellowPath);
-            } else if (diceView == bottomDiceLeft) {
-                currentZone = "red";
-                enableTokenClicks(redTokens, redPositions, redPath);
-            } else if (diceView == bottomDiceRight) {
-                currentZone = "blue";
-                enableTokenClicks(blueTokens, bluePositions, bluePath);
-            }
+            try {
+                PlayerColor color = PlayerColor.fromString(colorString);
+                int index = color.getIndex();
 
-        }, 500);
-    }
+                // Set the player's username based on whether it's the current user or an opponent
+                String playerName = id; // Default to ID for opponents
+                if (id.equals(userId)) {
+                    playerName = username; // Use the actual username for the current user
+                }
 
-    private void enableTokenClicks(ImageView[] tokens, int[] positions, List<int[]> path) {
-        for (int i = 0; i < tokens.length; i++) {
-            int index = i;
-            tokens[i].setOnClickListener(v -> {
-                for (ImageView token : tokens) token.setBackground(null);
-                tokens[index].setBackgroundResource(R.drawable.token_border_yellow);
-                moveTokenAlongPath(tokens[index], positions, index, path, lastRolledNumber);
-            });
-        }
-    }
+                players[index] = new Player(color, paths[index]);
+                players[index].setPlayerDetails(id, playerName);
 
-    private void setDiceAvailabilityByTurn() {
-        disableAllDice();
-        switch (currentTurn) {
-            case 0: topDiceLeft.setEnabled(true); break;
-            case 1: topDiceRight.setEnabled(true); break;
-            case 2: bottomDiceLeft.setEnabled(true); break;
-            case 3: bottomDiceRight.setEnabled(true); break;
-        }
-    }
+                if (id.equals(userId)) {
+                    Log.d(LOG_TAG, "aapka ID: " + id + " aur aapka color: " + color.getColorName());
+                } else {
+                    Log.d(LOG_TAG, "Opponent ID: " + id + " aur opponent ka color: " + color.getColorName());
+                }
 
-    private void addTokensToGrid() {
-        addTokenToGrid(1, 6, R.drawable.green_token);
-        addTokenToGrid(6, 13, R.drawable.red_token);
-        addTokenToGrid(8, 1, R.drawable.yellow_token);
-        addTokenToGrid(13, 8, R.drawable.blue_token);
-    }
+                // Player ka name set karein TextView par
+                if (playerInfoTextViews[index] != null) {
+                    playerInfoTextViews[index].setText(playerName);
+                }
 
-    private void addTokenToGrid(int row, int col, int drawableRes) {
-        GridLayout.LayoutParams tokenParams = new GridLayout.LayoutParams();
-        tokenParams.rowSpec = GridLayout.spec(row, 1f);
-        tokenParams.columnSpec = GridLayout.spec(col, 1f);
-        tokenParams.width = 0;
-        tokenParams.height = 0;
-        tokenParams.setGravity(Gravity.CENTER);
+                for (int j = 0; j < TOKEN_COUNT; j++) {
+                    players[index].tokens[j] = new Token(tokenViews[index][j]);
+                    final Player player = players[index];
+                    final Token token = players[index].tokens[j];
 
-        ImageView token = new ImageView(this);
-        token.setImageResource(drawableRes);
-        token.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        token.setLayoutParams(tokenParams);
-
-        ludoGrid.addView(token);
-    }
-
-    private void disableAllTokenClicks() {
-        ImageView[][] allTokens = {redTokens, greenTokens, yellowTokens, blueTokens};
-        for (ImageView[] tokenSet : allTokens) {
-            for (ImageView token : tokenSet) {
-                token.setOnClickListener(null);
+                    token.view.setOnClickListener(v -> onTokenClicked(player, token));
+                    token.view.setEnabled(false);
+                }
+            } catch (IllegalArgumentException e) {
+                Log.e(LOG_TAG, "Error: Unknown player color in Intent data: " + colorString);
             }
         }
     }
 
-    private void startGameTimer() {
-        new CountDownTimer(8 * 60 * 1000, 1000) {
-            public void onTick(long millisUntilFinished) {
-                long mins = millisUntilFinished / 60000;
-                long secs = (millisUntilFinished % 60000) / 1000;
-                timerText.setText(String.format("%02d:%02d", mins, secs));
+    @NonNull
+    @Contract(" -> new")
+    private CountDownTimer getCountDownTimer() {
+        long totalTime = 5 * 60 * 1000;
+        return new CountDownTimer(totalTime, 1000) {
+            @Override
+            public void onTick(long l) {
+                int minutes = (int) (l / 1000) / 60;
+                int second = (int) (l / 1000) % 60;
+
+                @SuppressLint("DefaultLocale")
+                String timeLeft = String.format("%02d:%02d", minutes, second);
+                binding.timerText.setText(timeLeft);
             }
 
+            @SuppressLint("SetTextI18n")
+            @Override
             public void onFinish() {
-                timerText.setText("00:00");
+                binding.timerText.setText("00:00");
+                GameRoomActivity.this.runOnUiThread(() -> leaveRoom());
             }
-        }.start();
+        };
     }
-    private void generateLudoBoard() {
-        int totalRows = 15;
-        int totalCols = 15;
-        ludoGrid.setRowCount(totalRows);
-        ludoGrid.setColumnCount(totalCols);
 
-        for (int row = 0; row < totalRows; row++) {
-            for (int col = 0; col < totalCols; col++) {
-                View cell;
-                GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-                params.width = 0;
-                params.height = 0;
-                params.rowSpec = GridLayout.spec(row, 1f);
-                params.columnSpec = GridLayout.spec(col, 1f);
-                params.setGravity(Gravity.FILL);
+    private void initializePlayerInfoTextViews() {
+        playerInfoTextViews[PlayerColor.YELLOW.getIndex()] = binding.bottomLeftPlayerName;
+        playerInfoTextViews[PlayerColor.GREEN.getIndex()] = binding.leftPlayerName;
+        playerInfoTextViews[PlayerColor.RED.getIndex()] = binding.rightPlayerName;
+        playerInfoTextViews[PlayerColor.BLUE.getIndex()] = binding.bottomRightPlayerName;
+    }
 
-                boolean isInsideHomeZone = (row < 6 && col < 6) || (row < 6 && col > 8)
-                        || (row > 8 && col < 6) || (row > 8 && col > 8);
+    private void rollDice(@NonNull PlayerColor playerColor) {
+        playDiceSound();
 
-                boolean isSafeBlock = (row == 2 && col == 6) || (row == 6 && col == 12)
-                        || (row == 8 && col == 2) || (row == 12 && col == 8);
+        final ImageView diceView = diceViews[playerColor.getIndex()];
 
-                boolean isEntryBlock = (row == 6 && col == 1) || (row == 1 && col == 8)
-                        || (row == 13 && col == 6) || (row == 8 && col == 13);
+        if (diceAnimator != null && diceAnimator.isRunning()) {
+            diceAnimator.cancel();
+        }
 
-                boolean isPreEntryBlock = (row == 6 && col == 5) || (row == 5 && col == 8)
-                        || (row == 8 && col == 9) || (row == 9 && col == 6);
+        diceView.setClickable(false);
 
-                if (isInsideHomeZone) {
-                    params.setMargins(0, 0, 0, 0);
-                } else {
-                    params.setMargins(1, 1, 1, 1);
+        ObjectAnimator bounceUp = ObjectAnimator.ofFloat(diceView, "translationY", -100f);
+        bounceUp.setDuration(150);
+
+        ObjectAnimator bounceDown = ObjectAnimator.ofFloat(diceView, "translationY", 0f);
+        bounceDown.setDuration(300);
+        bounceDown.setInterpolator(new BounceInterpolator());
+
+        ObjectAnimator rotate = ObjectAnimator.ofFloat(diceView, "rotation", 0f, 360f);
+        rotate.setDuration(800);
+
+        diceAnimator = new AnimatorSet();
+        diceAnimator.playSequentially(bounceUp, bounceDown);
+        diceAnimator.playTogether(rotate);
+
+        diceAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (authToken == null || roomId == null) {
+                    Log.e(LOG_TAG, "Auth Token or Room ID is null. Cannot roll dice.");
+                    diceView.setClickable(true);
+                    return;
                 }
 
-                cell = new View(this);
-                cell.setLayoutParams(params);
+                LudoApiHelper apiHelper = LudoApiHelper.getInstance(authToken);
+                apiHelper.rollDice(roomId, new Callback<>() {
+                    @Override
+                    public void onResponse(@NonNull Call<LudoRoomResponse> call, @NonNull Response<LudoRoomResponse> response) {
+                        diceView.setClickable(true);
+                        if (response.isSuccessful() && response.body() != null) {
+                            LudoRoomResponse roomResponse = response.body();
+                            currentDiceValue = roomResponse.getDiceValue(); // Store the dice value
 
-                if (isSafeBlock) {
-                    ImageView imageCell = new ImageView(this);
-                    imageCell.setLayoutParams(params);
-                    imageCell.setImageResource(R.drawable.ic_star);
-                    imageCell.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-                    imageCell.setBackgroundColor(Color.WHITE);
-                    cell = imageCell;
+                            // Invalid dice value ko handle karein taaki crash na ho
+                            if (currentDiceValue >= 1 && currentDiceValue <= 6) {
+                                diceView.setImageResource(DICE_DRAWABLES[currentDiceValue - 1]);
+                                Log.d(LOG_TAG, playerColor + " rolled: " + currentDiceValue);
 
-                } else if (isEntryBlock) {
-                    if (row == 6 && col == 1)
-                        cell.setBackgroundColor(Color.parseColor("#1E90FF"));
-                    else if (row == 1 && col == 8)
-                        cell.setBackgroundColor(Color.parseColor("#FF3030"));
-                    else if (row == 13 && col == 6)
-                        cell.setBackgroundColor(Color.parseColor("#FFD700"));
-                    else if (row == 8 && col == 13)
-                        cell.setBackgroundColor(Color.parseColor("#32CD32"));
+                                Player currentPlayer = players[playerColor.getIndex()];
+                                if (currentPlayer == null) {
+                                    Log.e(LOG_TAG, "Current player is null. Cannot roll dice.");
+                                    return;
+                                }
 
-                } else if (isPreEntryBlock) {
-                    cell.setBackgroundColor(Color.WHITE);
+                                // Call the improved auto-move logic
+                                checkForAutoMove(currentPlayer);
 
-                } else if ((row < 6 && col < 6)) {
-                    cell.setBackgroundColor(Color.parseColor("#1E90FF"));
-                } else if ((row < 6 && col > 8)) {
-                    cell.setBackgroundColor(Color.parseColor("#FF3030"));
-                } else if ((row > 8 && col < 6)) {
-                    cell.setBackgroundColor(Color.parseColor("#FFD700"));
-                } else if ((row > 8 && col > 8)) {
-                    cell.setBackgroundColor(Color.parseColor("#32CD32"));
-                } else if (col == 7 && row >= 1 && row <= 5) {
-                    cell.setBackgroundColor(Color.parseColor("#1E90FF"));
-                } else if (row == 7 && col >= 9 && col <= 13) {
-                    cell.setBackgroundColor(Color.parseColor("#FF3030"));
-                } else if (row == 7 && col >= 1 && col <= 5) {
-                    cell.setBackgroundColor(Color.parseColor("#FFD700"));
-                } else if (col == 7 && row >= 9 && row <= 13) {
-                    cell.setBackgroundColor(Color.parseColor("#32CD32"));
-                } else if (row >= 6 && row <= 8 && col >= 6 && col <= 8) {
-                    cell.setBackgroundColor(Color.WHITE);
-                } else if ((col == 6 || col == 8) && row >= 0 && row <= 14) {
-                    cell.setBackgroundColor(Color.WHITE);
-                } else if ((row == 6 || row == 8) && col >= 0 && col <= 14) {
-                    cell.setBackgroundColor(Color.WHITE);
-                } else {
-                    cell.setBackgroundColor(Color.WHITE);
+                                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                                String jsonResponse = gson.toJson(roomResponse);
+                                Log.d(LOG_TAG, "Roll Dice API Response: \n" + jsonResponse);
+                                Toast.makeText(GameRoomActivity.this, "Dice Rolled Successfully!", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Log.e(LOG_TAG, "Invalid dice value received from server: " + currentDiceValue);
+                                Toast.makeText(GameRoomActivity.this, "Invalid dice value. Please try again.", Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            Log.e(LOG_TAG, "Roll Dice API Failed: " + response.code() + " " + response.message());
+                            Toast.makeText(GameRoomActivity.this, "Failed to roll dice.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull Call<LudoRoomResponse> call, @NonNull Throwable t) {
+                        diceView.setClickable(true);
+                        Log.e(LOG_TAG, "Roll Dice API Call Failed", t);
+                        Toast.makeText(GameRoomActivity.this, "Network error.", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
+
+        diceAnimator.start();
+    }
+
+    // NEW IMPROVED AUTO-MOVE LOGIC
+    private void checkForAutoMove(Player currentPlayer) {
+        // When 6 is rolled, check if we have both home tokens and movable tokens on board
+        if (currentDiceValue == STARTING_DICE_VALUE) {
+            List<Token> homeTokens = getHomeTokens(currentPlayer);
+            List<Token> boardTokens = getBoardMovableTokens(currentPlayer);
+
+            // If player has both home tokens and movable board tokens, let them choose
+            if (!homeTokens.isEmpty() && !boardTokens.isEmpty()) {
+                // Enable all tokens that can be moved (both home and board tokens)
+                enableSelectableTokens(currentPlayer, homeTokens, boardTokens);
+                Toast.makeText(this, "Choose a token to move!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // If only home tokens available, auto-move one home token to start
+            if (!homeTokens.isEmpty() && boardTokens.isEmpty()) {
+                Token homeToken = homeTokens.get(0);
+                performAutoMove(currentPlayer, homeToken);
+                return;
+            }
+
+            // If only board tokens available, check if single movable token exists
+            if (homeTokens.isEmpty() && boardTokens.size() == 1) {
+                performAutoMove(currentPlayer, boardTokens.get(0));
+                return;
+            }
+
+            // Multiple board tokens available, let player choose
+            if (homeTokens.isEmpty() && boardTokens.size() > 1) {
+                enableSelectableTokens(currentPlayer, new ArrayList<>(), boardTokens);
+                Toast.makeText(this, "Choose a token to move!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        } else {
+            // For non-6 rolls, use existing logic
+            Token movableToken = getSingleMovableToken(currentPlayer);
+            if (movableToken != null) {
+                performAutoMove(currentPlayer, movableToken);
+            } else {
+                // Multiple tokens can move, let player choose
+                List<Token> movableTokens = getAllMovableTokens(currentPlayer);
+                if (!movableTokens.isEmpty()) {
+                    enableSelectableTokensForNonSix(currentPlayer, movableTokens);
+                    Toast.makeText(this, "Choose a token to move!", Toast.LENGTH_SHORT).show();
                 }
-
-                ludoGrid.addView(cell);
             }
         }
     }
 
-    private void addZoneScoreLabels() {
-        addScoreCircleToZone(findViewById(R.id.zoneRed), "15");
-        addScoreCircleToZone(findViewById(R.id.zoneBlue), "8");
-        addScoreCircleToZone(findViewById(R.id.zoneGreen), "12");
-        addScoreCircleToZone(findViewById(R.id.zoneYellow), "20");
+    // NEW HELPER METHODS
+    private List<Token> getHomeTokens(Player player) {
+        List<Token> homeTokens = new ArrayList<>();
+        for (Token token : player.tokens) {
+            if (token.position == -1) {
+                homeTokens.add(token);
+            }
+        }
+        return homeTokens;
     }
 
-    private void addScoreCircleToZone(View parentView, String score) {
-        if (parentView instanceof ViewGroup) {
-            FrameLayout.LayoutParams circleParams = new FrameLayout.LayoutParams(dpToPx(70), dpToPx(70));
-            circleParams.gravity = Gravity.CENTER;
+    private List<Token> getBoardMovableTokens(Player player) {
+        List<Token> boardTokens = new ArrayList<>();
+        for (Token token : player.tokens) {
+            if (token.position != -1 && canTokenMove(player, token, currentDiceValue)) {
+                boardTokens.add(token);
+            }
+        }
+        return boardTokens;
+    }
 
-            TextView scoreText = new TextView(this);
-            scoreText.setLayoutParams(circleParams);
-            scoreText.setBackground(ContextCompat.getDrawable(this, R.drawable.circle_white_bg));
-            scoreText.setText(score);
-            scoreText.setTextColor(Color.BLACK);
-            scoreText.setGravity(Gravity.CENTER);
-            scoreText.setTextSize(18);
-            scoreText.setTypeface(Typeface.DEFAULT_BOLD);
+    private List<Token> getAllMovableTokens(Player player) {
+        List<Token> movableTokens = new ArrayList<>();
+        for (Token token : player.tokens) {
+            if (canTokenMove(player, token, currentDiceValue)) {
+                movableTokens.add(token);
+            }
+        }
+        return movableTokens;
+    }
 
-            ((ViewGroup) parentView).addView(scoreText);
+    @SuppressLint("UseCompatLoadingForDrawables")
+    private void enableSelectableTokens(Player player, List<Token> homeTokens, List<Token> boardTokens) {
+        // First disable all tokens
+        player.setTokensEnabled(false);
+        player.clearTokenHighlights();
+
+        // Enable and highlight home tokens
+        for (Token token : homeTokens) {
+            token.view.setEnabled(true);
+            // You can add a highlight drawable here if available
+            token.view.setBackground(getDrawable(R.drawable.token_ring));
+
+        }
+
+        // Enable and highlight board tokens
+        for (Token token : boardTokens) {
+            token.view.setEnabled(true);
+            // You can add a highlight drawable here if available
+            token.view.setBackground(getDrawable(R.drawable.token_ring));
         }
     }
 
-    private int dpToPx(int dp) {
-        return (int) TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
+    @SuppressLint("UseCompatLoadingForDrawables")
+    private void enableSelectableTokensForNonSix(Player player, List<Token> movableTokens) {
+        // First disable all tokens
+        player.setTokensEnabled(false);
+        player.clearTokenHighlights();
+
+        // Enable and highlight movable tokens
+        for (Token token : movableTokens) {
+            token.view.setEnabled(true);
+            // You can add a highlight drawable here if available
+            token.view.setBackground(getDrawable(R.drawable.token_ring));
+        }
+    }
+
+    private void performAutoMove(Player currentPlayer, @NonNull Token movableToken) {
+        movableToken.view.postDelayed(() -> {
+            int tokenIndex = -1;
+            for (int i = 0; i < currentPlayer.tokens.length; i++) {
+                if (currentPlayer.tokens[i] == movableToken) {
+                    tokenIndex = i;
+                    break;
+                }
+            }
+            if (tokenIndex != -1) {
+                MoveTokenRequest moveTokenRequest = new MoveTokenRequest(tokenIndex);
+                LudoApiHelper.moveToken(
+                        roomId,
+                        moveTokenRequest,
+                        authToken,
+                        new Callback<>() {
+                            @Override
+                            public void onResponse(@NonNull Call<MoveTokenResponse> call, @NonNull Response<MoveTokenResponse> response) {
+                                if (response.isSuccessful() && response.body() != null) {
+                                    try {
+                                        Gson gson = new Gson();
+                                        String responseJson = gson.toJson(response.body());
+                                        Log.d(LOG_TAG, "Auto-move API Response JSON: " + responseJson);
+                                    } catch (Exception e) {
+                                        Log.e(LOG_TAG, "Failed to log auto-move response JSON", e);
+                                    }
+
+                                    Log.d(LOG_TAG, "Auto-moved token successfully via API.");
+                                    currentPlayer.clearTokenHighlights();
+                                    for (Token t : currentPlayer.tokens) {
+                                        t.view.clearAnimation();
+                                    }
+                                    moveToken(currentPlayer, movableToken, response.body());
+                                    currentPlayer.setTokensEnabled(false);
+                                } else {
+                                    try {
+                                        String errorJson = response.errorBody() != null ? response.errorBody().string() : "null";
+                                        Log.e(LOG_TAG, "Failed to auto-move token via API: " + response.code() + " | ErrorBody: " + errorJson);
+                                    } catch (Exception e) {
+                                        Log.e(LOG_TAG, "Error parsing auto-move errorBody", e);
+                                    }
+                                    Toast.makeText(GameRoomActivity.this, "Failed to auto-move token.", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(@NonNull Call<MoveTokenResponse> call, @NonNull Throwable throwable) {
+                                Log.e(LOG_TAG, "Auto-move API call failed", throwable);
+                                Toast.makeText(GameRoomActivity.this, "Network error during auto-move.", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                );
+            }
+        }, 1000); // 1 second delay
+    }
+
+    @SuppressLint("RestrictedApi")
+    @Override
+    public void onMessageReceived(String message) {
+        try {
+            JSONObject jsonObject = new JSONObject(message);
+            String type = jsonObject.getString("type");
+
+            if ("player_moved".equals(type)) {
+                // Parse the response using Gson
+                Gson gson = new Gson();
+                MoveTokenResponse response = gson.fromJson(jsonObject.toString(), MoveTokenResponse.class);
+
+                // Update UI based on the response
+                if (response.isSuccess()) {
+                    Log.d(TAG, "Auto-move API Response JSON: " + new Gson().toJson(response));
+
+                    // Update the score for the current player
+                    updatePlayerScoreUI(response.getCurrentPlayer().getColor(), response.getCurrentPlayer().getScore());
+
+                    // Optionally update the score for the next player, if needed
+                    updatePlayerScoreUI(response.getNextPlayer().getColor(), response.getNextPlayer().getScore());
+                }
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing JSON: " + e.getMessage());
+        }
+    }
+
+    @SuppressLint({"SetTextI18n", "RestrictedApi"})
+    private void updatePlayerScoreUI(@NonNull String playerColorStr, int newScore) {
+        // Convert string to PlayerColor enum
+        PlayerColor playerColor;
+        try {
+            playerColor = PlayerColor.valueOf(playerColorStr.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            Log.e(LOG_TAG, "Invalid player color: " + playerColorStr);
+            return;
+        }
+
+        // Find corresponding score TextView
+        TextView scoreTextView = null;
+        switch (playerColor) {
+            case RED:
+                scoreTextView = ludoBinding.redScore;
+                break;
+            case BLUE:
+                scoreTextView = ludoBinding.blueScore;
+                break;
+            case GREEN:
+                scoreTextView = ludoBinding.greenScore;
+                break;
+            case YELLOW:
+                scoreTextView = ludoBinding.yellowScore;
+                break;
+            default:
+                Log.w(LOG_TAG, "Unknown player color: " + playerColor);
+                return;
+        }
+
+        // Update text
+        scoreTextView.setText("Score: " + newScore);
+    }
+
+    @Nullable
+    private Token getSingleMovableToken(@NonNull Player player) {
+        List<Token> movableTokens = new ArrayList<>();
+
+        for (Token token : player.tokens) {
+            if (canTokenMove(player, token, currentDiceValue)) {
+                movableTokens.add(token);
+            }
+        }
+
+        // Return token only if there's exactly one movable token
+        return movableTokens.size() == 1 ? movableTokens.get(0) : null;
+    }
+
+    @Contract(pure = true)
+    private boolean canTokenMove(Player player, @NonNull Token token, int diceValue) {
+        // Case 1: Token in yard - can only move with 6
+        if (token.position == -1) {
+            return diceValue == STARTING_DICE_VALUE;
+        }
+
+        // Case 2: Token on path - check if move is within bounds
+        int newPos = token.position + diceValue;
+        return newPos < player.path.length;
+    }
+
+    private void onTokenClicked(@NonNull Player player, Token token) {
+        // Clear highlights and animations for this player's tokens
+        int tokenIndex = -1;
+
+        for (int i = 0; i < player.tokens.length; i++) {
+            if (player.tokens[i] == token) {
+                tokenIndex = i;
+                break;
+            }
+        }
+
+        if (tokenIndex != -1) {
+            MoveTokenRequest moveTokenRequest = new MoveTokenRequest(tokenIndex);
+
+            try {
+                Gson gson = new Gson();
+                String requestJson = gson.toJson(moveTokenRequest);
+                Log.d(LOG_TAG, "MoveTokenRequest JSON: " + requestJson);
+            } catch (Exception e) {
+                Log.e(LOG_TAG, "Failed to log request JSON", e);
+            }
+            LudoApiHelper.moveToken(roomId,
+                    moveTokenRequest,
+                    authToken,
+                    new Callback<>() {
+                        @Override
+                        public void onResponse(@NonNull Call<MoveTokenResponse> call, @NonNull Response<MoveTokenResponse> response) {
+                            if (response.isSuccessful() && response.body() != null) {
+
+                                try {
+                                    Gson gson = new Gson();
+                                    String responseJson = gson.toJson(response.body());
+                                    Log.d(LOG_TAG, "MoveTokenResponse JSON: " + responseJson);
+                                } catch (Exception e) {
+                                    Log.e(LOG_TAG, "Failed to log response JSON", e);
+                                }
+                                Log.d(LOG_TAG, "Token moved successfully via api");
+                                player.clearTokenHighlights();
+                                for (Token token1 : player.tokens) {
+                                    token1.view.clearAnimation();
+                                }
+                                moveToken(player, token, response.body());
+                                player.setTokensEnabled(false);
+                                Toast.makeText(GameRoomActivity.this, "Token moved!", Toast.LENGTH_SHORT).show();
+                            } else {
+                                try {
+                                    String errorJson = response.errorBody() != null ? response.errorBody().string() : "null";
+                                    Log.e(LOG_TAG, "Failed to move token via API: " + response.code() + " | ErrorBody: " + errorJson);
+                                } catch (Exception e) {
+                                    Log.e(LOG_TAG, "Error parsing errorBody", e);
+                                }
+                                Toast.makeText(GameRoomActivity.this, "Failed to move token.", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(@NonNull Call<MoveTokenResponse> call, @NonNull Throwable throwable) {
+                            Log.e(LOG_TAG, "API call failed", throwable);
+                            Toast.makeText(GameRoomActivity.this, "Network error.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+            );
+        }
+    }
+
+    private void moveToken(@NonNull Player player, @NonNull Token token, MoveTokenResponse moveResponse) {
+        PlayerColor playerColor;
+        try {
+            playerColor = player.getColor();
+        } catch (IllegalArgumentException e) {
+            Log.e(LOG_TAG, "Invalid player color: " + player.getColor());
+            return;
+        }
+
+        View[] path = null;
+        switch (playerColor) {
+            case YELLOW:
+                path = getYellowPath();
+                break;
+            case GREEN:
+                path = getGreenPath();
+                break;
+            case RED:
+                path = getRedPath();
+                break;
+            case BLUE:
+                path = getBluePath();
+                break;
+            default:
+                return;
+        }
+
+        if (path == null) {
+            Log.e(LOG_TAG, "Invalid player color or path not found.");
+            return;
+        }
+
+        // New variables to hold the correct positions and steps
+        int correctNewPos;
+        final int steps = moveResponse.getDice();
+        int oldPos = token.position;
+
+        // Changes here to fix the logic
+        if (oldPos == -1 && steps == 6) {
+            // jab token ghar (-1) mein ho aur 6 aaye, tab usko seedhe 0th index par move karo
+            correctNewPos = 0;
+            token.position = correctNewPos;
+            View startingCell = path[correctNewPos];
+
+            // Animate token to the correct starting position
+            animateTokenToPosition(token, startingCell);
+
+            Log.d(LOG_TAG, "Token moved from home to starting position (index 0)");
+        } else if (oldPos != -1) {
+            // Tokens jo pehle se board par hain, unko normal tarah se aage badhao
+            correctNewPos = oldPos + steps;
+
+            // Check for boundary conditions (agar token ko board se bahar move kiya ja raha hai)
+            if (correctNewPos >= path.length) {
+                Toast.makeText(this, "Cannot move that far", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            token.position = correctNewPos;
+            animateTokenStep(player, token, oldPos, steps);
+        }
+
+        // The rest of the code remains the same
+        if (moveResponse.getCaptured() != null) {
+            Log.d(LOG_TAG, "Token captured!");
+        }
+
+        if (moveResponse.isGameOver()) {
+            Log.d(LOG_TAG, "Game Over! Winner: " + moveResponse.getWinner());
+            Toast.makeText(this, "Game Over! Winner: " + moveResponse.getWinner(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    // NEW METHOD TO ANIMATE TOKEN DIRECTLY TO A POSITION
+    private void animateTokenToPosition(Token token, View targetCell) {
+        ensureTokenParenting(token);
+
+        float[] coordinates = calculateTokenPosition(token, targetCell, 0, 1);
+
+        token.view.animate()
+                .x(coordinates[0])
+                .y(coordinates[1])
+                .setDuration(DICE_ANIMATION_DURATION * 2) // Slightly longer animation
+                .withEndAction(() -> {
+                    placeTokenOnCell(token, targetCell);
+                    Log.d(LOG_TAG, "Token successfully placed at starting position");
+                })
+                .start();
+    }
+
+    private void ensureTokenParenting(@NonNull Token token) {
+        ViewGroup root = ludoBinding.getRoot();
+        if (token.view.getParent() != root) {
+            ViewGroup currentParent = (ViewGroup) token.view.getParent();
+            if (currentParent != null) {
+                currentParent.removeView(token.view);
+            }
+            root.addView(token.view);
+        }
+    }
+
+    private void animateTokenStep(Player player, Token token, int currentPos, int stepsLeft) {
+        if (stepsLeft <= 0) {
+            return;
+        }
+
+        int nextPos = currentPos + 1;
+        if (nextPos >= player.path.length) {
+            Log.w(LOG_TAG, "Animation would move beyond path end");
+            return;
+        }
+
+        View cell = player.path[nextPos];
+        if (cell == null) {
+            Log.e(LOG_TAG, "Cell at position " + nextPos + " is null for " + player.color);
+            return;
+        }
+
+        // For step animation, we don't need to handle multiple tokens yet
+        float[] coordinates = calculateTokenPosition(token, cell, 0, 1);
+
+        token.view.animate()
+                .x(coordinates[0])
+                .y(coordinates[1])
+                .setDuration(DICE_ANIMATION_DURATION)
+                .withEndAction(() -> {
+                    token.position = nextPos;
+                    if (stepsLeft == 1) {
+                        // Final position - place properly with multi-token support
+                        placeTokenOnCell(token, cell);
+                    } else {
+                        animateTokenStep(player, token, nextPos, stepsLeft - 1);
+                    }
+                })
+                .start();
+    }
+
+    @NonNull
+    @Contract("_, _,_ , _ -> new")
+    private float[] calculateTokenPosition(@NonNull Token token, @NonNull View cell, int tokenIndex, int totalTokens) {
+        View root = ludoBinding.getRoot();
+
+        int[] rootLoc = new int[2];
+        root.getLocationOnScreen(rootLoc);
+
+        int[] cellLoc = new int[2];
+        cell.getLocationOnScreen(cellLoc);
+
+        float cellCenterX = cellLoc[0] - rootLoc[0] + cell.getWidth() / 2f;
+        float cellCenterY = cellLoc[1] - rootLoc[1] + cell.getHeight() / 2f;
+
+        float tokenSize = token.view.getWidth();
+        float newX, newY;
+
+        // Offset kam rakha for tight grouping
+        float offset = tokenSize * 0.3f;
+
+        switch (totalTokens) {
+            case 1:
+                // Single token → center
+                newX = cellCenterX - tokenSize / 2f;
+                newY = cellCenterY - tokenSize / 2f;
+                break;
+
+            case 2:
+                // Ek left upar, ek right neeche (tight diagonal)
+                if (tokenIndex == 0) {
+                    newX = cellCenterX - offset;
+                    newY = cellCenterY - offset;
+                } else {
+                    newX = cellCenterX + offset - tokenSize;
+                    newY = cellCenterY + offset - tokenSize;
+                }
+                break;
+
+            case 3:
+                // Triangle (tight, center me adjust)
+                if (tokenIndex == 0) {
+                    newX = cellCenterX - tokenSize / 2f;
+                    newY = cellCenterY - offset - tokenSize / 2f;
+                } else if (tokenIndex == 1) {
+                    newX = cellCenterX - offset;
+                    newY = cellCenterY + offset - tokenSize / 2f;
+                } else {
+                    newX = cellCenterX + offset - tokenSize;
+                    newY = cellCenterY + offset - tokenSize / 2f;
+                }
+                break;
+
+            case 4:
+                // 2x2 square (tight placement, like Ludo King)
+                if (tokenIndex == 0) {
+                    newX = cellCenterX - offset;
+                    newY = cellCenterY - offset;
+                } else if (tokenIndex == 1) {
+                    newX = cellCenterX + offset - tokenSize;
+                    newY = cellCenterY - offset;
+                } else if (tokenIndex == 2) {
+                    newX = cellCenterX - offset;
+                    newY = cellCenterY + offset - tokenSize;
+                } else {
+                    newX = cellCenterX + offset - tokenSize;
+                    newY = cellCenterY + offset - tokenSize;
+                }
+                break;
+
+            default:
+                // 5+ tokens → chhote circle me arrange
+                double angle = (2 * Math.PI / totalTokens) * tokenIndex;
+                float radius = tokenSize * 0.35f; // small radius
+                newX = (float) (cellCenterX + radius * Math.cos(angle)) - tokenSize / 2f;
+                newY = (float) (cellCenterY + radius * Math.sin(angle)) - tokenSize / 2f;
+                break;
+        }
+
+        return new float[]{newX, newY};
+    }
+
+    private void placeTokenOnCell(@NonNull Token token, @NonNull View cell) {
+        removeTokenFromAllCells(token);
+        ensureTokenParenting(token);
+        List<Token> tokensInCell = cellTokensMap.getOrDefault(cell, new ArrayList<>());
+        assert tokensInCell != null;
+        tokensInCell.add(token);
+        cellTokensMap.put(cell, tokensInCell);
+        // Update token's current cell
+        token.currentCell = cell;
+
+        // Rearrange all tokens in the cell
+        rearrangeTokensInCell(cell);
+    }
+
+    private void rearrangeTokensInCell(@NonNull View cell) {
+        List<Token> tokensInCell = cellTokensMap.get(cell);
+        if (tokensInCell == null || tokensInCell.isEmpty()) {
+            return;
+        }
+
+        int totalTokens = tokensInCell.size();
+
+        for (int i = 0; i < totalTokens; i++) {
+            Token token = tokensInCell.get(i);
+
+            // Calculate new size based on number of tokens
+            float scaleFactor = calculateScaleFactor(totalTokens);
+
+            // Calculate new position
+            float[] coordinates = calculateTokenPosition(token, cell, i, totalTokens);
+
+            // Animate to new position and scale
+            token.view.animate()
+                    .x(coordinates[0])
+                    .y(coordinates[1])
+                    .scaleX(scaleFactor)
+                    .scaleY(scaleFactor)
+                    .setDuration(200)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
+
+            // Bring to front for visibility
+            token.view.bringToFront();
+        }
+
+        Log.d(LOG_TAG, "Rearranged " + totalTokens + " tokens in cell");
+    }
+
+    private float calculateScaleFactor(int totalTokens) {
+        switch (totalTokens) {
+            case 1:
+                return 1.0f; // Full size
+            case 2:
+                return 0.8f; // 80% size
+            case 3:
+                return 0.7f; // 70% size
+            case 4:
+                return 0.6f; // 60% size
+            default:
+                return 0.5f; // 50% size for more than 4
+        }
+    }
+
+    private void removeTokenFromAllCells(@NonNull Token token) {
+        Iterator<Map.Entry<View, List<Token>>> iterator = cellTokensMap.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<View, List<Token>> entry = iterator.next();
+            List<Token> tokens = entry.getValue();
+
+            if (tokens.remove(token)) {
+                if (tokens.isEmpty()) {
+                    iterator.remove();
+                } else {
+                    // Rearrange remaining tokens
+                    rearrangeTokensInCell(entry.getKey());
+                }
+                break;
+            }
+        }
+    }
+
+    private void playDiceSound() {
+        if (diceSound != null) {
+            diceSound.start();
+        }
+    }
+
+    private void leaveRoom() {
+        if (userId == null || roomId == null) {
+            Toast.makeText(GameRoomActivity.this, "Room or user not found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            JSONObject object = new JSONObject();
+            object.put("roomId", roomId);
+            object.put("userId", userId);
+
+            SocketManager.emit("leaveroom", object);
+            Log.d("GameRoomActivity", "leaveRoom socket emitted: " + object);
+
+        } catch (Exception e) {
+            Log.e("GameRoomActivity", "Socket emit error: " + e.getMessage());
+            Toast.makeText(this, "Failed to send leave event", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @NonNull
+    @Contract(value = " -> new", pure = true)
+    private View[] getYellowPath() {
+        return new View[]{
+                ludoBinding.pathBottom13, ludoBinding.pathBottom10, ludoBinding.pathBottom7, ludoBinding.pathBottom4, ludoBinding.pathBottom1,
+                ludoBinding.pathLeft18, ludoBinding.pathLeft17, ludoBinding.pathLeft16, ludoBinding.pathLeft15, ludoBinding.pathLeft14, ludoBinding.pathLeft13,
+                ludoBinding.pathLeft7, ludoBinding.pathLeft1, ludoBinding.pathLeft2, ludoBinding.pathLeft3, ludoBinding.pathLeft4, ludoBinding.pathLeft5, ludoBinding.pathLeft6,
+                ludoBinding.pathTop16, ludoBinding.pathTop13, ludoBinding.pathTop10, ludoBinding.pathTop7, ludoBinding.pathTop4, ludoBinding.pathTop1, ludoBinding.pathTop2,
+                ludoBinding.pathTop3, ludoBinding.pathTop6, ludoBinding.pathTop9, ludoBinding.pathTop12, ludoBinding.pathTop15, ludoBinding.pathTop18,
+                ludoBinding.pathRight1, ludoBinding.pathRight2, ludoBinding.pathRight3, ludoBinding.pathRight4, ludoBinding.pathRight5, ludoBinding.pathRight6,
+                ludoBinding.pathRight12, ludoBinding.pathRight18, ludoBinding.pathRight17, ludoBinding.pathRight16, ludoBinding.pathRight15, ludoBinding.pathRight14,
+                ludoBinding.pathRight13, ludoBinding.pathBottom3, ludoBinding.pathBottom6, ludoBinding.pathBottom9, ludoBinding.pathBottom12, ludoBinding.pathBottom15,
+                ludoBinding.pathBottom18, ludoBinding.pathBottom17, ludoBinding.pathBottom14, ludoBinding.pathBottom11, ludoBinding.pathBottom8, ludoBinding.pathBottom5,
+                ludoBinding.pathBottom2, ludoBinding.center
+        };
+    }
+
+    @NonNull
+    @Contract(value = " -> new", pure = true)
+    private View[] getGreenPath() {
+        return new View[]{
+                ludoBinding.pathLeft2, ludoBinding.pathLeft3, ludoBinding.pathLeft4, ludoBinding.pathLeft5, ludoBinding.pathLeft6,
+                ludoBinding.pathTop16, ludoBinding.pathTop13, ludoBinding.pathTop10, ludoBinding.pathTop7, ludoBinding.pathTop4, ludoBinding.pathTop1,
+                ludoBinding.pathTop2, ludoBinding.pathTop3, ludoBinding.pathTop6, ludoBinding.pathTop9, ludoBinding.pathTop12, ludoBinding.pathTop15,
+                ludoBinding.pathTop18, ludoBinding.pathRight1, ludoBinding.pathRight2, ludoBinding.pathRight3,
+                ludoBinding.pathRight4, ludoBinding.pathRight5, ludoBinding.pathRight6, ludoBinding.pathRight12, ludoBinding.pathRight18,
+                ludoBinding.pathRight17, ludoBinding.pathRight16, ludoBinding.pathRight15, ludoBinding.pathRight14, ludoBinding.pathRight13,
+                ludoBinding.pathBottom3, ludoBinding.pathBottom6, ludoBinding.pathBottom9, ludoBinding.pathBottom12,
+                ludoBinding.pathBottom15, ludoBinding.pathBottom18, ludoBinding.pathBottom17, ludoBinding.pathBottom16,
+                ludoBinding.pathBottom13, ludoBinding.pathBottom10, ludoBinding.pathBottom7, ludoBinding.pathBottom4, ludoBinding.pathBottom1,
+                ludoBinding.pathLeft18, ludoBinding.pathLeft17, ludoBinding.pathLeft16, ludoBinding.pathLeft15,
+                ludoBinding.pathLeft14, ludoBinding.pathLeft13, ludoBinding.pathLeft7, ludoBinding.pathLeft8, ludoBinding.pathLeft9,
+                ludoBinding.pathLeft10, ludoBinding.pathLeft11, ludoBinding.pathLeft12, ludoBinding.center
+        };
+    }
+
+    @NonNull
+    @Contract(value = " -> new", pure = true)
+    private View[] getRedPath() {
+        return new View[]{
+                ludoBinding.pathTop6, ludoBinding.pathTop9, ludoBinding.pathTop12, ludoBinding.pathTop15, ludoBinding.pathTop18,
+                ludoBinding.pathRight1, ludoBinding.pathRight2, ludoBinding.pathRight3, ludoBinding.pathRight4, ludoBinding.pathRight5,
+                ludoBinding.pathRight6, ludoBinding.pathRight12, ludoBinding.pathRight18, ludoBinding.pathRight17, ludoBinding.pathRight16,
+                ludoBinding.pathRight15, ludoBinding.pathRight14, ludoBinding.pathRight13, ludoBinding.pathBottom3, ludoBinding.pathBottom6,
+                ludoBinding.pathBottom9, ludoBinding.pathBottom12, ludoBinding.pathBottom15, ludoBinding.pathBottom18, ludoBinding.pathBottom17,
+                ludoBinding.pathBottom16, ludoBinding.pathBottom13, ludoBinding.pathBottom10, ludoBinding.pathBottom7,
+                ludoBinding.pathBottom4, ludoBinding.pathBottom1, ludoBinding.pathLeft18, ludoBinding.pathLeft17,
+                ludoBinding.pathLeft16, ludoBinding.pathLeft15, ludoBinding.pathLeft14, ludoBinding.pathLeft13, ludoBinding.pathLeft7,
+                ludoBinding.pathLeft1, ludoBinding.pathLeft2, ludoBinding.pathLeft3, ludoBinding.pathLeft4, ludoBinding.pathLeft5,
+                ludoBinding.pathLeft6, ludoBinding.pathTop16, ludoBinding.pathTop13, ludoBinding.pathTop10, ludoBinding.pathTop7,
+                ludoBinding.pathTop4, ludoBinding.pathTop1, ludoBinding.pathTop2, ludoBinding.pathTop5, ludoBinding.pathTop8, ludoBinding.pathTop11,
+                ludoBinding.pathTop14, ludoBinding.pathTop17, ludoBinding.center
+        };
+    }
+
+    @NonNull
+    @Contract(value = " -> new", pure = true)
+    private View[] getBluePath() {
+        return new View[]{
+                ludoBinding.pathRight17, ludoBinding.pathRight16, ludoBinding.pathRight15, ludoBinding.pathRight14, ludoBinding.pathRight13,
+                ludoBinding.pathBottom3, ludoBinding.pathBottom6, ludoBinding.pathBottom9, ludoBinding.pathBottom12, ludoBinding.pathBottom15,
+                ludoBinding.pathBottom18, ludoBinding.pathBottom17, ludoBinding.pathBottom16, ludoBinding.pathBottom13, ludoBinding.pathBottom10,
+                ludoBinding.pathBottom7, ludoBinding.pathBottom4, ludoBinding.pathBottom1, ludoBinding.pathLeft18, ludoBinding.pathLeft17,
+                ludoBinding.pathLeft16, ludoBinding.pathLeft15, ludoBinding.pathLeft14, ludoBinding.pathLeft13, ludoBinding.pathLeft7,
+                ludoBinding.pathLeft1, ludoBinding.pathLeft2, ludoBinding.pathLeft3, ludoBinding.pathLeft4,
+                ludoBinding.pathLeft5, ludoBinding.pathLeft6, ludoBinding.pathTop16, ludoBinding.pathTop13, ludoBinding.pathTop10,
+                ludoBinding.pathTop7, ludoBinding.pathTop4, ludoBinding.pathTop1, ludoBinding.pathTop2, ludoBinding.pathTop3,
+                ludoBinding.pathTop6, ludoBinding.pathTop9, ludoBinding.pathTop12, ludoBinding.pathTop15, ludoBinding.pathTop18,
+                ludoBinding.pathRight1, ludoBinding.pathRight2, ludoBinding.pathRight3, ludoBinding.pathRight4,
+                ludoBinding.pathRight5, ludoBinding.pathRight6, ludoBinding.pathRight12, ludoBinding.pathRight11,
+                ludoBinding.pathRight10, ludoBinding.pathRight9, ludoBinding.pathRight8, ludoBinding.pathRight7, ludoBinding.center
+        };
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (diceSound != null) {
+            diceSound.release();
+            diceSound = null;
+        }
     }
 }

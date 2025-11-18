@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/rootFrame"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -9,8 +10,8 @@
         android:id="@+id/mainContentLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:background="#F8F8F8">
+        android:background="#F8F8F8"
+        android:orientation="vertical">
 
         <!-- Header -->
         <RelativeLayout
@@ -23,120 +24,107 @@
                 android:id="@+id/btnBack"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/ic_back"
                 android:layout_alignParentStart="true"
-                android:tint="@android:color/white"/>
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_back"
+                app:tint="@android:color/white" />
 
             <TextView
                 android:id="@+id/tvTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Ludo PlayZelo"
+                android:layout_centerInParent="true"
+                android:text="@string/ludo_playzelo"
                 android:textColor="@android:color/white"
-                android:textStyle="bold"
                 android:textSize="18sp"
-                android:layout_centerInParent="true"/>
+                android:textStyle="bold" />
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_alignParentEnd="true"
-                android:gravity="center_vertical">
-
-
-            </LinearLayout>
         </RelativeLayout>
-
-        <!-- Filters -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="8dp"
-            android:gravity="center_vertical">
-
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:src="@drawable/ic_filter"
-                android:tint="#555"
-                android:layout_marginEnd="16dp" />
-
-            <TextView
-                android:id="@+id/tabAll"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="All"
-                android:textStyle="bold"
-                android:background="@drawable/bg_tab_selected"
-                android:textColor="#FFF"
-                android:gravity="center"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="8dp"
-                android:layout_marginEnd="12dp" />
-
-            <TextView
-                android:id="@+id/tabRegular"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="REGULAR\n8-10 min game"
-                android:textSize="12sp"
-                android:textColor="#000"
-                android:background="@drawable/bg_tab_unselected"
-                android:gravity="center"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="8dp"
-                android:layout_marginEnd="12dp" />
-
-            <TextView
-                android:id="@+id/tab2Players"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="2 Players"
-                android:background="@drawable/bg_tab_unselected"
-                android:textColor="#000"
-                android:gravity="center"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="8dp" />
-        </LinearLayout>
-
-        <!-- ScrollView -->
-        <ScrollView
-            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fillViewport="true">
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="24dp">
 
-            <LinearLayout
+            <!-- Two Player Card -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardTwoPlayer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingBottom="16dp">
+                android:layout_marginBottom="24dp"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="6dp">
 
                 <LinearLayout
-                    android:id="@+id/layoutRecommendedTournaments"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:paddingHorizontal="12dp"
-                    android:layout_marginTop="4dp" />
+                    android:gravity="center"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_card_blue">
+
+                    <ImageView
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:src="@drawable/ic_two_player"
+                        android:contentDescription="Two Player" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="2 Players"
+                        android:textColor="@android:color/white"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="8dp"/>
+                    <Button
+                        android:id="@+id/btnTwoPlayer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="60dp"
+                        android:text="Play"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Four Player Card -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardFourPlayer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="6dp">
 
                 <LinearLayout
-                    android:id="@+id/layoutOtherTournaments"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:paddingHorizontal="12dp"
-                    android:layout_marginTop="4dp" />
-            </LinearLayout>
-        </ScrollView>
+                    android:gravity="center"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_card_purple">
+
+                    <ImageView
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:src="@drawable/ic_four_player"
+                        android:contentDescription="Four Player" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="4 Players"
+                        android:textColor="@android:color/white"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="8dp"/>
+                    <Button
+                        android:id="@+id/btnFourPlayer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="60dp"
+                        android:text="Play"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+        </LinearLayout>
     </LinearLayout>
-
-    <!-- Fragment Container -->
-    <FrameLayout
-        android:id="@+id/fragmentContainer"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone" />
 </FrameLayout>
