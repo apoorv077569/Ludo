@@ -1,6 +1,5 @@
 package com.playzelo.ludo.activity;
 
-import static androidx.fragment.app.FragmentManager.TAG;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -14,7 +13,6 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.view.animation.BounceInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
@@ -24,34 +22,20 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.playzelo.ludomodule.R;
-import com.playzelo.ludomodule.apiservice.LudoApiHelper;
-import com.playzelo.ludomodule.databinding.ActivityLudoGameRoomBinding;
-import com.playzelo.ludomodule.databinding.LudoLayoutBinding;
-import com.playzelo.ludomodule.models.LudoRoomResponse;
-import com.playzelo.ludomodule.models.MoveTokenRequest;
-import com.playzelo.ludomodule.models.MoveTokenResponse;
-import com.playzelo.ludomodule.utils.SocketManager;
-
+import com.playzelo.ludo.R;
+import com.playzelo.ludo.databinding.ActivityGameRoomBinding;
+import com.playzelo.ludo.databinding.LudoLayoutBinding;
 import org.jetbrains.annotations.Contract;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
-public class GameRoomActivity extends AppCompatActivity implements SocketManager.OnMessageReceivedListener {
+public class GameRoomActivity extends AppCompatActivity {
 
     // Constants
     private static final int DICE_ANIMATION_DURATION = 300;
@@ -65,8 +49,27 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
     private String userId, authToken, username;
     private double entry_fee, prize_pool;
     private Animation pulseAnimation;
-    private ActivityLudoGameRoomBinding binding;
+    private ActivityGameRoomBinding binding;
     private LudoLayoutBinding ludoBinding;
+
+    // Game state
+    private int currentPlayerIndex = 0; // Track current player turn
+    private int currentDiceValue = 0;
+    private MediaPlayer diceSound;
+    private AnimatorSet diceAnimator;
+    private String roomId;
+    private Random random = new Random();
+
+    // UI elements
+    private ImageView[] diceViews = new ImageView[4];
+    private final Player[] players = new Player[4];
+
+    // Dice drawable resources
+    private static final int[] DICE_DRAWABLES = {
+            R.drawable.dice_1, R.drawable.dice_2, R.drawable.dice_3,
+            R.drawable.dice_4, R.drawable.dice_5, R.drawable.dice_6
+    };
+    private final TextView[] playerInfoTextViews = new TextView[4];
 
     public enum PlayerColor {
         YELLOW("yellow", 0), GREEN("green", 1), RED("red", 2), BLUE("blue", 3);
@@ -97,24 +100,6 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         }
     }
 
-    // Game state
-    private int currentDiceValue = 0;
-    private MediaPlayer diceSound;
-    private AnimatorSet diceAnimator;
-    private String roomId;
-    private ImageView[][] tokenViews;
-
-    // UI elements
-    private ImageView[] diceViews = new ImageView[4];
-    private final Player[] players = new Player[4];
-
-    // Dice drawable resources
-    private static final int[] DICE_DRAWABLES = {
-            R.drawable.dice_1, R.drawable.dice_2, R.drawable.dice_3,
-            R.drawable.dice_4, R.drawable.dice_5, R.drawable.dice_6
-    };
-    private final TextView[] playerInfoTextViews = new TextView[4];
-
     // Token class
     static class Token {
         ImageView view;
@@ -133,6 +118,7 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         Token[] tokens = new Token[TOKEN_COUNT];
         View[] path;
         PlayerColor color;
+        int score = 0;
 
         Player(PlayerColor color, View[] path) {
             this.color = color;
@@ -168,7 +154,7 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        binding = ActivityLudoGameRoomBinding.inflate(getLayoutInflater());
+        binding = ActivityGameRoomBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         ludoBinding = LudoLayoutBinding.bind(binding.ludoLayout.getRoot());
         initializeSound();
@@ -186,15 +172,15 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         List<String> playerColors = getIntent().getStringArrayListExtra("playerColors");
 
         initializePlayers(playerIds, playerColors);
-        Log.d(LOG_TAG, "Username: " + username + " userId: " + userId + " Token: " + authToken + " roomId: " + roomId);
+        Log.d(LOG_TAG, "Username: " + username + " userId: " + userId + " roomId: " + roomId);
         initializePlayerInfoTextViews();
         diceViews = new ImageView[]{binding.leftDice, binding.topDiceLeft, binding.topDiceRight, binding.rightDice};
-        binding.backButton.setOnClickListener(v -> leaveRoom());
+        binding.backButton.setOnClickListener(v -> finish());
         binding.prizePool.setText(String.valueOf(prize_pool));
-        CountDownTimer countDownTimer = getCountDownTimer();
-        countDownTimer.start();
-    }
 
+        // Enable dice for first player
+        updateTurnUI();
+    }
 
     private void initializeSound() {
         diceSound = MediaPlayer.create(this, R.raw.dice_roll);
@@ -207,7 +193,6 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         diceViews[PlayerColor.RED.getIndex()] = binding.topDiceRight;
         diceViews[PlayerColor.BLUE.getIndex()] = binding.rightDice;
 
-        // Set click listeners for all dice
         for (PlayerColor color : PlayerColor.values()) {
             final PlayerColor playerColor = color;
             diceViews[color.getIndex()].setOnClickListener(v -> rollDice(playerColor));
@@ -240,22 +225,14 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
                 PlayerColor color = PlayerColor.fromString(colorString);
                 int index = color.getIndex();
 
-                // Set the player's username based on whether it's the current user or an opponent
-                String playerName = id; // Default to ID for opponents
+                String playerName = id;
                 if (id.equals(userId)) {
-                    playerName = username; // Use the actual username for the current user
+                    playerName = username;
                 }
 
                 players[index] = new Player(color, paths[index]);
                 players[index].setPlayerDetails(id, playerName);
 
-                if (id.equals(userId)) {
-                    Log.d(LOG_TAG, "aapka ID: " + id + " aur aapka color: " + color.getColorName());
-                } else {
-                    Log.d(LOG_TAG, "Opponent ID: " + id + " aur opponent ka color: " + color.getColorName());
-                }
-
-                // Player ka name set karein TextView par
                 if (playerInfoTextViews[index] != null) {
                     playerInfoTextViews[index].setText(playerName);
                 }
@@ -274,30 +251,6 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         }
     }
 
-    @NonNull
-    @Contract(" -> new")
-    private CountDownTimer getCountDownTimer() {
-        long totalTime = 5 * 60 * 1000;
-        return new CountDownTimer(totalTime, 1000) {
-            @Override
-            public void onTick(long l) {
-                int minutes = (int) (l / 1000) / 60;
-                int second = (int) (l / 1000) % 60;
-
-                @SuppressLint("DefaultLocale")
-                String timeLeft = String.format("%02d:%02d", minutes, second);
-                binding.timerText.setText(timeLeft);
-            }
-
-            @SuppressLint("SetTextI18n")
-            @Override
-            public void onFinish() {
-                binding.timerText.setText("00:00");
-                GameRoomActivity.this.runOnUiThread(() -> leaveRoom());
-            }
-        };
-    }
-
     private void initializePlayerInfoTextViews() {
         playerInfoTextViews[PlayerColor.YELLOW.getIndex()] = binding.bottomLeftPlayerName;
         playerInfoTextViews[PlayerColor.GREEN.getIndex()] = binding.leftPlayerName;
@@ -305,7 +258,23 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         playerInfoTextViews[PlayerColor.BLUE.getIndex()] = binding.bottomRightPlayerName;
     }
 
+    private void updateTurnUI() {
+        // Disable all dice first
+        for (int i = 0; i < diceViews.length; i++) {
+            diceViews[i].setEnabled(false);
+            diceViews[i].setAlpha(0.5f);
+        }
+
+        // Enable current player's dice
+        if (players[currentPlayerIndex] != null) {
+            diceViews[currentPlayerIndex].setEnabled(true);
+            diceViews[currentPlayerIndex].setAlpha(1.0f);
+            Toast.makeText(this, players[currentPlayerIndex].username + "'s turn", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void rollDice(@NonNull PlayerColor playerColor) {
+
         playDiceSound();
 
         final ImageView diceView = diceViews[playerColor.getIndex()];
@@ -333,113 +302,75 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         diceAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                if (authToken == null || roomId == null) {
-                    Log.e(LOG_TAG, "Auth Token or Room ID is null. Cannot roll dice.");
+
+                // 🎲 Random dice value for this player
+                currentDiceValue = random.nextInt(6) + 1;
+                diceView.setImageResource(DICE_DRAWABLES[currentDiceValue - 1]);
+
+                Log.d(LOG_TAG, playerColor + " rolled: " + currentDiceValue);
+
+                Player currentPlayer = players[playerColor.getIndex()];
+                if (currentPlayer == null) {
+                    Log.e(LOG_TAG, "Player is null for color: " + playerColor);
                     diceView.setClickable(true);
                     return;
                 }
 
-                LudoApiHelper apiHelper = LudoApiHelper.getInstance(authToken);
-                apiHelper.rollDice(roomId, new Callback<>() {
-                    @Override
-                    public void onResponse(@NonNull Call<LudoRoomResponse> call, @NonNull Response<LudoRoomResponse> response) {
-                        diceView.setClickable(true);
-                        if (response.isSuccessful() && response.body() != null) {
-                            LudoRoomResponse roomResponse = response.body();
-                            currentDiceValue = roomResponse.getDiceValue(); // Store the dice value
+                // Enable tokens for THIS player
+                checkForAutoMove(currentPlayer);
 
-                            // Invalid dice value ko handle karein taaki crash na ho
-                            if (currentDiceValue >= 1 && currentDiceValue <= 6) {
-                                diceView.setImageResource(DICE_DRAWABLES[currentDiceValue - 1]);
-                                Log.d(LOG_TAG, playerColor + " rolled: " + currentDiceValue);
-
-                                Player currentPlayer = players[playerColor.getIndex()];
-                                if (currentPlayer == null) {
-                                    Log.e(LOG_TAG, "Current player is null. Cannot roll dice.");
-                                    return;
-                                }
-
-                                // Call the improved auto-move logic
-                                checkForAutoMove(currentPlayer);
-
-                                Gson gson = new GsonBuilder().setPrettyPrinting().create();
-                                String jsonResponse = gson.toJson(roomResponse);
-                                Log.d(LOG_TAG, "Roll Dice API Response: \n" + jsonResponse);
-                                Toast.makeText(GameRoomActivity.this, "Dice Rolled Successfully!", Toast.LENGTH_SHORT).show();
-                            } else {
-                                Log.e(LOG_TAG, "Invalid dice value received from server: " + currentDiceValue);
-                                Toast.makeText(GameRoomActivity.this, "Invalid dice value. Please try again.", Toast.LENGTH_SHORT).show();
-                            }
-                        } else {
-                            Log.e(LOG_TAG, "Roll Dice API Failed: " + response.code() + " " + response.message());
-                            Toast.makeText(GameRoomActivity.this, "Failed to roll dice.", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(@NonNull Call<LudoRoomResponse> call, @NonNull Throwable t) {
-                        diceView.setClickable(true);
-                        Log.e(LOG_TAG, "Roll Dice API Call Failed", t);
-                        Toast.makeText(GameRoomActivity.this, "Network error.", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                diceView.setClickable(true);
             }
         });
 
         diceAnimator.start();
     }
 
-    // NEW IMPROVED AUTO-MOVE LOGIC
     private void checkForAutoMove(Player currentPlayer) {
-        // When 6 is rolled, check if we have both home tokens and movable tokens on board
         if (currentDiceValue == STARTING_DICE_VALUE) {
             List<Token> homeTokens = getHomeTokens(currentPlayer);
             List<Token> boardTokens = getBoardMovableTokens(currentPlayer);
 
-            // If player has both home tokens and movable board tokens, let them choose
             if (!homeTokens.isEmpty() && !boardTokens.isEmpty()) {
-                // Enable all tokens that can be moved (both home and board tokens)
                 enableSelectableTokens(currentPlayer, homeTokens, boardTokens);
                 Toast.makeText(this, "Choose a token to move!", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // If only home tokens available, auto-move one home token to start
             if (!homeTokens.isEmpty() && boardTokens.isEmpty()) {
                 Token homeToken = homeTokens.get(0);
                 performAutoMove(currentPlayer, homeToken);
                 return;
             }
 
-            // If only board tokens available, check if single movable token exists
             if (homeTokens.isEmpty() && boardTokens.size() == 1) {
                 performAutoMove(currentPlayer, boardTokens.get(0));
                 return;
             }
 
-            // Multiple board tokens available, let player choose
             if (homeTokens.isEmpty() && boardTokens.size() > 1) {
                 enableSelectableTokens(currentPlayer, new ArrayList<>(), boardTokens);
                 Toast.makeText(this, "Choose a token to move!", Toast.LENGTH_SHORT).show();
                 return;
             }
         } else {
-            // For non-6 rolls, use existing logic
             Token movableToken = getSingleMovableToken(currentPlayer);
             if (movableToken != null) {
                 performAutoMove(currentPlayer, movableToken);
             } else {
-                // Multiple tokens can move, let player choose
                 List<Token> movableTokens = getAllMovableTokens(currentPlayer);
                 if (!movableTokens.isEmpty()) {
                     enableSelectableTokensForNonSix(currentPlayer, movableTokens);
                     Toast.makeText(this, "Choose a token to move!", Toast.LENGTH_SHORT).show();
+                } else {
+                    // No movable tokens, skip turn
+                    Toast.makeText(this, "No valid moves! Turn skipped.", Toast.LENGTH_SHORT).show();
+                    switchToNextPlayer();
                 }
             }
         }
     }
 
-    // NEW HELPER METHODS
     private List<Token> getHomeTokens(Player player) {
         List<Token> homeTokens = new ArrayList<>();
         for (Token token : player.tokens) {
@@ -472,157 +403,46 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
 
     @SuppressLint("UseCompatLoadingForDrawables")
     private void enableSelectableTokens(Player player, List<Token> homeTokens, List<Token> boardTokens) {
-        // First disable all tokens
         player.setTokensEnabled(false);
         player.clearTokenHighlights();
 
-        // Enable and highlight home tokens
         for (Token token : homeTokens) {
             token.view.setEnabled(true);
-            // You can add a highlight drawable here if available
             token.view.setBackground(getDrawable(R.drawable.token_ring));
-
         }
 
-        // Enable and highlight board tokens
         for (Token token : boardTokens) {
             token.view.setEnabled(true);
-            // You can add a highlight drawable here if available
             token.view.setBackground(getDrawable(R.drawable.token_ring));
         }
     }
 
     @SuppressLint("UseCompatLoadingForDrawables")
     private void enableSelectableTokensForNonSix(Player player, List<Token> movableTokens) {
-        // First disable all tokens
         player.setTokensEnabled(false);
         player.clearTokenHighlights();
 
-        // Enable and highlight movable tokens
         for (Token token : movableTokens) {
             token.view.setEnabled(true);
-            // You can add a highlight drawable here if available
             token.view.setBackground(getDrawable(R.drawable.token_ring));
         }
     }
 
     private void performAutoMove(Player currentPlayer, @NonNull Token movableToken) {
         movableToken.view.postDelayed(() -> {
-            int tokenIndex = -1;
-            for (int i = 0; i < currentPlayer.tokens.length; i++) {
-                if (currentPlayer.tokens[i] == movableToken) {
-                    tokenIndex = i;
-                    break;
-                }
+            Log.d(LOG_TAG, "Auto-moving token");
+            currentPlayer.clearTokenHighlights();
+            for (Token t : currentPlayer.tokens) {
+                t.view.clearAnimation();
             }
-            if (tokenIndex != -1) {
-                MoveTokenRequest moveTokenRequest = new MoveTokenRequest(tokenIndex);
-                LudoApiHelper.moveToken(
-                        roomId,
-                        moveTokenRequest,
-                        authToken,
-                        new Callback<>() {
-                            @Override
-                            public void onResponse(@NonNull Call<MoveTokenResponse> call, @NonNull Response<MoveTokenResponse> response) {
-                                if (response.isSuccessful() && response.body() != null) {
-                                    try {
-                                        Gson gson = new Gson();
-                                        String responseJson = gson.toJson(response.body());
-                                        Log.d(LOG_TAG, "Auto-move API Response JSON: " + responseJson);
-                                    } catch (Exception e) {
-                                        Log.e(LOG_TAG, "Failed to log auto-move response JSON", e);
-                                    }
+            moveToken(currentPlayer, movableToken);
+            currentPlayer.setTokensEnabled(false);
 
-                                    Log.d(LOG_TAG, "Auto-moved token successfully via API.");
-                                    currentPlayer.clearTokenHighlights();
-                                    for (Token t : currentPlayer.tokens) {
-                                        t.view.clearAnimation();
-                                    }
-                                    moveToken(currentPlayer, movableToken, response.body());
-                                    currentPlayer.setTokensEnabled(false);
-                                } else {
-                                    try {
-                                        String errorJson = response.errorBody() != null ? response.errorBody().string() : "null";
-                                        Log.e(LOG_TAG, "Failed to auto-move token via API: " + response.code() + " | ErrorBody: " + errorJson);
-                                    } catch (Exception e) {
-                                        Log.e(LOG_TAG, "Error parsing auto-move errorBody", e);
-                                    }
-                                    Toast.makeText(GameRoomActivity.this, "Failed to auto-move token.", Toast.LENGTH_SHORT).show();
-                                }
-                            }
-
-                            @Override
-                            public void onFailure(@NonNull Call<MoveTokenResponse> call, @NonNull Throwable throwable) {
-                                Log.e(LOG_TAG, "Auto-move API call failed", throwable);
-                                Toast.makeText(GameRoomActivity.this, "Network error during auto-move.", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                );
+            // Switch turn after auto-move (unless rolled 6)
+            if (currentDiceValue != STARTING_DICE_VALUE) {
+                switchToNextPlayer();
             }
-        }, 1000); // 1 second delay
-    }
-
-    @SuppressLint("RestrictedApi")
-    @Override
-    public void onMessageReceived(String message) {
-        try {
-            JSONObject jsonObject = new JSONObject(message);
-            String type = jsonObject.getString("type");
-
-            if ("player_moved".equals(type)) {
-                // Parse the response using Gson
-                Gson gson = new Gson();
-                MoveTokenResponse response = gson.fromJson(jsonObject.toString(), MoveTokenResponse.class);
-
-                // Update UI based on the response
-                if (response.isSuccess()) {
-                    Log.d(TAG, "Auto-move API Response JSON: " + new Gson().toJson(response));
-
-                    // Update the score for the current player
-                    updatePlayerScoreUI(response.getCurrentPlayer().getColor(), response.getCurrentPlayer().getScore());
-
-                    // Optionally update the score for the next player, if needed
-                    updatePlayerScoreUI(response.getNextPlayer().getColor(), response.getNextPlayer().getScore());
-                }
-            }
-        } catch (JSONException e) {
-            Log.e(TAG, "Error parsing JSON: " + e.getMessage());
-        }
-    }
-
-    @SuppressLint({"SetTextI18n", "RestrictedApi"})
-    private void updatePlayerScoreUI(@NonNull String playerColorStr, int newScore) {
-        // Convert string to PlayerColor enum
-        PlayerColor playerColor;
-        try {
-            playerColor = PlayerColor.valueOf(playerColorStr.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            Log.e(LOG_TAG, "Invalid player color: " + playerColorStr);
-            return;
-        }
-
-        // Find corresponding score TextView
-        TextView scoreTextView = null;
-        switch (playerColor) {
-            case RED:
-                scoreTextView = ludoBinding.redScore;
-                break;
-            case BLUE:
-                scoreTextView = ludoBinding.blueScore;
-                break;
-            case GREEN:
-                scoreTextView = ludoBinding.greenScore;
-                break;
-            case YELLOW:
-                scoreTextView = ludoBinding.yellowScore;
-                break;
-            default:
-                Log.w(LOG_TAG, "Unknown player color: " + playerColor);
-                return;
-        }
-
-        // Update text
-        scoreTextView.setText("Score: " + newScore);
+        }, 500);
     }
 
     @Nullable
@@ -635,140 +455,78 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
             }
         }
 
-        // Return token only if there's exactly one movable token
         return movableTokens.size() == 1 ? movableTokens.get(0) : null;
     }
 
     @Contract(pure = true)
     private boolean canTokenMove(Player player, @NonNull Token token, int diceValue) {
-        // Case 1: Token in yard - can only move with 6
         if (token.position == -1) {
             return diceValue == STARTING_DICE_VALUE;
         }
 
-        // Case 2: Token on path - check if move is within bounds
         int newPos = token.position + diceValue;
         return newPos < player.path.length;
     }
 
     private void onTokenClicked(@NonNull Player player, Token token) {
-        // Clear highlights and animations for this player's tokens
-        int tokenIndex = -1;
-
-        for (int i = 0; i < player.tokens.length; i++) {
-            if (player.tokens[i] == token) {
-                tokenIndex = i;
-                break;
-            }
-        }
-
-        if (tokenIndex != -1) {
-            MoveTokenRequest moveTokenRequest = new MoveTokenRequest(tokenIndex);
-
-            try {
-                Gson gson = new Gson();
-                String requestJson = gson.toJson(moveTokenRequest);
-                Log.d(LOG_TAG, "MoveTokenRequest JSON: " + requestJson);
-            } catch (Exception e) {
-                Log.e(LOG_TAG, "Failed to log request JSON", e);
-            }
-            LudoApiHelper.moveToken(roomId,
-                    moveTokenRequest,
-                    authToken,
-                    new Callback<>() {
-                        @Override
-                        public void onResponse(@NonNull Call<MoveTokenResponse> call, @NonNull Response<MoveTokenResponse> response) {
-                            if (response.isSuccessful() && response.body() != null) {
-
-                                try {
-                                    Gson gson = new Gson();
-                                    String responseJson = gson.toJson(response.body());
-                                    Log.d(LOG_TAG, "MoveTokenResponse JSON: " + responseJson);
-                                } catch (Exception e) {
-                                    Log.e(LOG_TAG, "Failed to log response JSON", e);
-                                }
-                                Log.d(LOG_TAG, "Token moved successfully via api");
-                                player.clearTokenHighlights();
-                                for (Token token1 : player.tokens) {
-                                    token1.view.clearAnimation();
-                                }
-                                moveToken(player, token, response.body());
-                                player.setTokensEnabled(false);
-                                Toast.makeText(GameRoomActivity.this, "Token moved!", Toast.LENGTH_SHORT).show();
-                            } else {
-                                try {
-                                    String errorJson = response.errorBody() != null ? response.errorBody().string() : "null";
-                                    Log.e(LOG_TAG, "Failed to move token via API: " + response.code() + " | ErrorBody: " + errorJson);
-                                } catch (Exception e) {
-                                    Log.e(LOG_TAG, "Error parsing errorBody", e);
-                                }
-                                Toast.makeText(GameRoomActivity.this, "Failed to move token.", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-
-                        @Override
-                        public void onFailure(@NonNull Call<MoveTokenResponse> call, @NonNull Throwable throwable) {
-                            Log.e(LOG_TAG, "API call failed", throwable);
-                            Toast.makeText(GameRoomActivity.this, "Network error.", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-            );
-        }
-    }
-
-    private void moveToken(@NonNull Player player, @NonNull Token token, MoveTokenResponse moveResponse) {
-        PlayerColor playerColor;
-        try {
-            playerColor = player.getColor();
-        } catch (IllegalArgumentException e) {
-            Log.e(LOG_TAG, "Invalid player color: " + player.getColor());
+        // Only allow current player to move tokens
+        if (player.color.getIndex() != currentPlayerIndex) {
+            Toast.makeText(this, "Not your turn!", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        View[] path = null;
-        switch (playerColor) {
-            case YELLOW:
-                path = getYellowPath();
-                break;
-            case GREEN:
-                path = getGreenPath();
-                break;
-            case RED:
-                path = getRedPath();
-                break;
-            case BLUE:
-                path = getBluePath();
-                break;
-            default:
-                return;
+        // Check if token can move
+        if (!canTokenMove(player, token, currentDiceValue)) {
+            Toast.makeText(this, "Cannot move this token!", Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        Log.d(LOG_TAG, "Token clicked and moved");
+        player.clearTokenHighlights();
+        for (Token token1 : player.tokens) {
+            token1.view.clearAnimation();
+        }
+        moveToken(player, token);
+        player.setTokensEnabled(false);
+        Toast.makeText(GameRoomActivity.this, "Token moved!", Toast.LENGTH_SHORT).show();
+
+        // Switch turn (unless rolled 6)
+        if (currentDiceValue != STARTING_DICE_VALUE) {
+            switchToNextPlayer();
+        }
+    }
+
+    private void switchToNextPlayer() {
+        // Move to next player
+        do {
+            currentPlayerIndex = (currentPlayerIndex + 1) % 4;
+        } while (players[currentPlayerIndex] == null);
+
+        updateTurnUI();
+    }
+
+    private void moveToken(@NonNull Player player, @NonNull Token token) {
+        PlayerColor playerColor = player.getColor();
+        View[] path = player.path;
 
         if (path == null) {
             Log.e(LOG_TAG, "Invalid player color or path not found.");
             return;
         }
 
-        // New variables to hold the correct positions and steps
         int correctNewPos;
-        final int steps = moveResponse.getDice();
+        final int steps = currentDiceValue;
         int oldPos = token.position;
 
-        // Changes here to fix the logic
         if (oldPos == -1 && steps == 6) {
-            // jab token ghar (-1) mein ho aur 6 aaye, tab usko seedhe 0th index par move karo
             correctNewPos = 0;
             token.position = correctNewPos;
             View startingCell = path[correctNewPos];
-
-            // Animate token to the correct starting position
             animateTokenToPosition(token, startingCell);
-
             Log.d(LOG_TAG, "Token moved from home to starting position (index 0)");
         } else if (oldPos != -1) {
-            // Tokens jo pehle se board par hain, unko normal tarah se aage badhao
             correctNewPos = oldPos + steps;
 
-            // Check for boundary conditions (agar token ko board se bahar move kiya ja raha hai)
             if (correctNewPos >= path.length) {
                 Toast.makeText(this, "Cannot move that far", Toast.LENGTH_SHORT).show();
                 return;
@@ -776,20 +534,16 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
 
             token.position = correctNewPos;
             animateTokenStep(player, token, oldPos, steps);
-        }
 
-        // The rest of the code remains the same
-        if (moveResponse.getCaptured() != null) {
-            Log.d(LOG_TAG, "Token captured!");
-        }
-
-        if (moveResponse.isGameOver()) {
-            Log.d(LOG_TAG, "Game Over! Winner: " + moveResponse.getWinner());
-            Toast.makeText(this, "Game Over! Winner: " + moveResponse.getWinner(), Toast.LENGTH_LONG).show();
+            // Check if token reached center (win condition)
+            if (correctNewPos == path.length - 1) {
+                player.score++;
+                updatePlayerScoreUI(player.color.getColorName(), player.score);
+                Toast.makeText(this, player.username + " scored!", Toast.LENGTH_LONG).show();
+            }
         }
     }
 
-    // NEW METHOD TO ANIMATE TOKEN DIRECTLY TO A POSITION
     private void animateTokenToPosition(Token token, View targetCell) {
         ensureTokenParenting(token);
 
@@ -798,7 +552,7 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         token.view.animate()
                 .x(coordinates[0])
                 .y(coordinates[1])
-                .setDuration(DICE_ANIMATION_DURATION * 2) // Slightly longer animation
+                .setDuration(DICE_ANIMATION_DURATION * 2)
                 .withEndAction(() -> {
                     placeTokenOnCell(token, targetCell);
                     Log.d(LOG_TAG, "Token successfully placed at starting position");
@@ -834,7 +588,6 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
             return;
         }
 
-        // For step animation, we don't need to handle multiple tokens yet
         float[] coordinates = calculateTokenPosition(token, cell, 0, 1);
 
         token.view.animate()
@@ -844,7 +597,6 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
                 .withEndAction(() -> {
                     token.position = nextPos;
                     if (stepsLeft == 1) {
-                        // Final position - place properly with multi-token support
                         placeTokenOnCell(token, cell);
                     } else {
                         animateTokenStep(player, token, nextPos, stepsLeft - 1);
@@ -854,7 +606,7 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
     }
 
     @NonNull
-    @Contract("_, _,_ , _ -> new")
+    @Contract("_, _, _, _ -> new")
     private float[] calculateTokenPosition(@NonNull Token token, @NonNull View cell, int tokenIndex, int totalTokens) {
         View root = ludoBinding.getRoot();
 
@@ -870,18 +622,15 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         float tokenSize = token.view.getWidth();
         float newX, newY;
 
-        // Offset kam rakha for tight grouping
         float offset = tokenSize * 0.3f;
 
         switch (totalTokens) {
             case 1:
-                // Single token → center
                 newX = cellCenterX - tokenSize / 2f;
                 newY = cellCenterY - tokenSize / 2f;
                 break;
 
             case 2:
-                // Ek left upar, ek right neeche (tight diagonal)
                 if (tokenIndex == 0) {
                     newX = cellCenterX - offset;
                     newY = cellCenterY - offset;
@@ -892,7 +641,6 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
                 break;
 
             case 3:
-                // Triangle (tight, center me adjust)
                 if (tokenIndex == 0) {
                     newX = cellCenterX - tokenSize / 2f;
                     newY = cellCenterY - offset - tokenSize / 2f;
@@ -906,7 +654,6 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
                 break;
 
             case 4:
-                // 2x2 square (tight placement, like Ludo King)
                 if (tokenIndex == 0) {
                     newX = cellCenterX - offset;
                     newY = cellCenterY - offset;
@@ -923,9 +670,8 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
                 break;
 
             default:
-                // 5+ tokens → chhote circle me arrange
                 double angle = (2 * Math.PI / totalTokens) * tokenIndex;
-                float radius = tokenSize * 0.35f; // small radius
+                float radius = tokenSize * 0.35f;
                 newX = (float) (cellCenterX + radius * Math.cos(angle)) - tokenSize / 2f;
                 newY = (float) (cellCenterY + radius * Math.sin(angle)) - tokenSize / 2f;
                 break;
@@ -938,13 +684,10 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         removeTokenFromAllCells(token);
         ensureTokenParenting(token);
         List<Token> tokensInCell = cellTokensMap.getOrDefault(cell, new ArrayList<>());
-        assert tokensInCell != null;
         tokensInCell.add(token);
         cellTokensMap.put(cell, tokensInCell);
-        // Update token's current cell
         token.currentCell = cell;
 
-        // Rearrange all tokens in the cell
         rearrangeTokensInCell(cell);
     }
 
@@ -959,13 +702,9 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         for (int i = 0; i < totalTokens; i++) {
             Token token = tokensInCell.get(i);
 
-            // Calculate new size based on number of tokens
             float scaleFactor = calculateScaleFactor(totalTokens);
-
-            // Calculate new position
             float[] coordinates = calculateTokenPosition(token, cell, i, totalTokens);
 
-            // Animate to new position and scale
             token.view.animate()
                     .x(coordinates[0])
                     .y(coordinates[1])
@@ -975,7 +714,6 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
                     .setInterpolator(new DecelerateInterpolator())
                     .start();
 
-            // Bring to front for visibility
             token.view.bringToFront();
         }
 
@@ -985,15 +723,15 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
     private float calculateScaleFactor(int totalTokens) {
         switch (totalTokens) {
             case 1:
-                return 1.0f; // Full size
+                return 1.0f;
             case 2:
-                return 0.8f; // 80% size
+                return 0.8f;
             case 3:
-                return 0.7f; // 70% size
+                return 0.7f;
             case 4:
-                return 0.6f; // 60% size
+                return 0.6f;
             default:
-                return 0.5f; // 50% size for more than 4
+                return 0.5f;
         }
     }
 
@@ -1007,7 +745,6 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
                 if (tokens.isEmpty()) {
                     iterator.remove();
                 } else {
-                    // Rearrange remaining tokens
                     rearrangeTokensInCell(entry.getKey());
                 }
                 break;
@@ -1015,28 +752,40 @@ public class GameRoomActivity extends AppCompatActivity implements SocketManager
         }
     }
 
-    private void playDiceSound() {
-        if (diceSound != null) {
-            diceSound.start();
+    @SuppressLint({"SetTextI18n", "RestrictedApi"})
+    private void updatePlayerScoreUI(@NonNull String playerColorStr, int newScore) {
+        PlayerColor playerColor;
+        try {
+            playerColor = PlayerColor.valueOf(playerColorStr.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            Log.e(LOG_TAG, "Invalid player color: " + playerColorStr);
+            return;
+        }
+
+        TextView scoreTextView = null;
+        switch (playerColor) {
+            case RED:
+                scoreTextView = ludoBinding.redScore;
+                break;
+            case BLUE:
+                scoreTextView = ludoBinding.blueScore;
+                break;
+            case GREEN:
+                scoreTextView = ludoBinding.greenScore;
+                break;
+            case YELLOW:
+                scoreTextView = ludoBinding.yellowScore;
+                break;
+        }
+
+        if (scoreTextView != null) {
+            scoreTextView.setText("Score: " + newScore);
         }
     }
 
-    private void leaveRoom() {
-        if (userId == null || roomId == null) {
-            Toast.makeText(GameRoomActivity.this, "Room or user not found", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        try {
-            JSONObject object = new JSONObject();
-            object.put("roomId", roomId);
-            object.put("userId", userId);
-
-            SocketManager.emit("leaveroom", object);
-            Log.d("GameRoomActivity", "leaveRoom socket emitted: " + object);
-
-        } catch (Exception e) {
-            Log.e("GameRoomActivity", "Socket emit error: " + e.getMessage());
-            Toast.makeText(this, "Failed to send leave event", Toast.LENGTH_SHORT).show();
+    private void playDiceSound() {
+        if (diceSound != null) {
+            diceSound.start();
         }
     }
 

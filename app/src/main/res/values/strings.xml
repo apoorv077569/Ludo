@@ -11,7 +11,11 @@
     <string name="select_players">SELECT PLAYERS</string>
     <string name="ludo_playzelo">Ludo PlayZelo</string>
     <string name="score_0">Score: 0</string>
-
+    <string name="sign_in_with_play_games">Sign in with Play Games</string>
+<string name="server_client_id">
+    9949468866-06vpfi3jqkv75onkn34prkkbc1i3imq6.apps.googleusercontent.com
+</string>
+    <string name="login">Login</string>
     <string-array name="Select_No_of_Players">
         <item>2 Players</item>
         <item>4 Players</item>

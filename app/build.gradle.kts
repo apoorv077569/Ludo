@@ -45,11 +45,11 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 
-    implementation ("com.razorpay:checkout:1.6.33")
     implementation ("com.airbnb.android:lottie:6.0.1")
     implementation ("com.airbnb.android:lottie:6.1.0")
     implementation ("com.airbnb.android:lottie:6.0.0")
-    implementation(project(":ludoModule"))
+//    implementation(project(":ludoModule"))
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
     implementation ("com.google.android.material:material:1.12.0")
     implementation ("com.google.android.material:material:1.9.0")
     implementation ("com.github.bumptech.glide:glide:4.16.0")

@@ -23,15 +23,15 @@
             android:exported="true"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
         <activity
-            android:name="com.playzelo.ludomodule.activity.CountdownActivity"
+            android:name="com.playzelo.ludo.activity.CountdownActivity"
             android:exported="true"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
         <activity
-            android:name="com.playzelo.ludomodule.activity.MatchmakingActivity"
+            android:name="com.playzelo.ludo.activity.MatchmakingActivity"
             android:exported="true"
             tools:replace="android:exported" />
         <activity
-            android:name="com.playzelo.ludomodule.activity.GameRoomActivity"
+            android:name="com.playzelo.ludo.activity.GameRoomActivity"
             android:exported="true"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
         <activity
@@ -42,7 +42,6 @@
             android:name=".activity.MainActivity"
             android:exported="true" />
 
-        <activity android:name="com.razorpay.CheckoutActivity" />
         <activity
             android:name=".activity.SplashActivity"
             android:exported="true"

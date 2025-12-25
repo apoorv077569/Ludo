@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <!-- Ring ka outer stroke -->
+    <stroke
+        android:width="4dp"
+        android:color="#003f5c" /> <!-- Golden color -->
+
+    <!-- Ring ke beech ka part transparent -->
+    <solid android:color="@android:color/transparent" />
+
+    <!-- Thoda shadow/glow effect -->
+    <padding android:top="2dp" android:bottom="2dp" android:left="2dp" android:right="2dp"/>
+    <size android:width="60dp" android:height="60dp"/>
+</shape>

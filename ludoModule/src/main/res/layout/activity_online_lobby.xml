@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#B71C1C"
+    android:padding="16dp">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/txtTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="ONLINE MULTIPLAYER"
+        android:textColor="#FFEB3B"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp"/>
+
+    <!-- Room Code Box -->
+    <LinearLayout
+        android:id="@+id/roomCodeLayout"
+        android:layout_below="@id/txtTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:layout_marginTop="20dp"
+        android:background="@drawable/bg_room_code">
+
+        <EditText
+            android:id="@+id/edtRoomCode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_room_code"
+            android:text="31110919"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#2196F3"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:focusable="true"
+            android:cursorVisible="true"
+            android:inputType="number"
+            android:layout_marginEnd="12dp"/>
+
+        <ImageButton
+            android:id="@+id/btnCopy"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_menu_copy"
+            android:background="@android:color/transparent"
+            android:contentDescription="Copy Room Code"/>
+
+        <ImageButton
+            android:id="@+id/btnShare"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_share"
+            android:background="@android:color/transparent"
+            android:contentDescription="Share Room Code"/>
+
+        <ImageButton
+            android:id="@+id/btnWhatsapp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/whatsapp"
+            android:background="@android:color/transparent"
+            android:contentDescription="Share on WhatsApp"/>
+    </LinearLayout>
+
+    <!-- Entry Amount -->
+    <TextView
+        android:id="@+id/txtEntry"
+        android:layout_below="@id/roomCodeLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Classic > Entry Amount : 100"
+        android:textColor="#00FF00"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="15dp"/>
+
+    <!-- Host Player -->
+    <ImageView
+        android:id="@+id/imgHost"
+        android:layout_below="@id/txtEntry"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp"
+        android:src="@drawable/ic_player"
+        android:background="@drawable/bg_player"
+        android:contentDescription="Host Player"/>
+
+    <TextView
+        android:id="@+id/txtHostName"
+        android:layout_below="@id/imgHost"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bitmax Apps"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="6dp"/>
+
+    <!-- VS Text -->
+    <TextView
+        android:id="@+id/txtVS"
+        android:layout_below="@id/txtHostName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="VS"
+        android:textColor="#FFEB3B"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="25dp"/>
+
+    <!-- Player Slots -->
+    <LinearLayout
+        android:id="@+id/playerSlots"
+        android:layout_below="@id/txtVS"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:layout_marginTop="20dp">
+
+        <ImageView
+            android:id="@+id/slot1"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:src="@drawable/ic_add_player"
+            android:background="@drawable/bg_player_slot"
+            android:layout_margin="6dp"/>
+
+        <ImageView
+            android:id="@+id/slot2"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:src="@drawable/ic_add_player"
+            android:background="@drawable/bg_player_slot"
+            android:layout_margin="6dp"/>
+
+        <ImageView
+            android:id="@+id/slot3"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:src="@drawable/ic_add_player"
+            android:background="@drawable/bg_player_slot"
+            android:layout_margin="6dp"/>
+
+        <ImageView
+            android:id="@+id/slot4"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:src="@drawable/ic_add_player"
+            android:background="@drawable/bg_player_slot"
+            android:layout_margin="6dp"/>
+    </LinearLayout>
+
+    <!-- Bottom Back Button -->
+    <ImageButton
+        android:id="@+id/btnBack"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="10dp"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:src="@drawable/ic_back"
+        android:background="@drawable/bg_button_rounded"
+        android:layout_centerHorizontal="true"/>
+</RelativeLayout>

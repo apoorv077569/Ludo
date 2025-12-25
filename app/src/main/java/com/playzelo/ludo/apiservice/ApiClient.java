@@ -4,7 +4,7 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiClient {
-    private static final String BASE_URL = "https://ludo-2lix.onrender.com/";
+    private static final String BASE_URL = "https://ludo-plum.vercel.app/";
     private static Retrofit retrofit = null;
 
     public static Retrofit getClient() {

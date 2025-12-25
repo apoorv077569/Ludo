@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Top triangle (red) -->
+    <path
+        android:fillColor="#DC143C"
+        android:pathData="M0,0 L100,0 L50,50 Z" />
+
+    <!-- Bottom-left triangle (yellow) -->
+    <path
+        android:fillColor="#FF8C00"
+        android:pathData="M0,100 L50,50 L100,100 L0,100 Z" />
+
+    <!-- Left triangle (green) -->
+    <path
+        android:fillColor="#228B22"
+        android:pathData="M0,0 L50,50 L0,100 Z" />
+
+    <!-- Right triangle (blue) -->
+    <path
+        android:fillColor="#1E90FF"
+        android:pathData="M100,0 L100,100 L50,50 Z" />
+</vector>

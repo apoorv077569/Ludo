@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background color -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#1E90FF" />
+            <stroke
+                android:width="0.5dp"
+                android:color="@color/black" />
+        </shape>
+    </item>
+
+    <!-- Center star icon -->
+    <item
+        android:drawable="@drawable/ic_star_otulined"
+        android:gravity="center" />
+</layer-list>

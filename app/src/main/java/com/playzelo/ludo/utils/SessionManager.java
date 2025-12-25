@@ -27,6 +27,10 @@ public class SessionManager {
         editor.apply();
     }
 
+    public void saveToken(String token){
+        pref.edit().putString(KEY_TOKEN,token).apply();
+    }
+
     public boolean isLoggerIn() {
         return pref.getBoolean(KEY_IS_LOGGED_IN, false);
     }

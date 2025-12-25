@@ -1,0 +1,77 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0B2A63"
+    android:padding="24dp">
+
+    <!-- Logo -->
+    <ImageView
+        android:id="@+id/logo"
+        android:layout_width="180dp"
+        android:layout_height="180dp"
+        android:layout_centerHorizontal="true"
+        android:src="@drawable/play_zelo_logo"
+        android:contentDescription="Logo" />
+
+    <!-- App Name -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/appName"
+        android:layout_below="@id/logo"
+        android:layout_centerHorizontal="true"
+        android:text="Ludo Play n Win"
+        android:textSize="28sp"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold" />
+
+    <!-- Username -->
+    <EditText
+        android:id="@+id/usernameInput"
+        android:layout_below="@id/appName"
+        android:layout_marginTop="32dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rounded_edittext"
+        android:hint="Username"
+        android:textColorHint="#CCCCCC"
+        android:textColor="#000000"
+        android:padding="14dp" />
+
+    <!-- Password -->
+    <EditText
+        android:id="@+id/passwordInput"
+        android:layout_below="@id/usernameInput"
+        android:layout_marginTop="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rounded_edittext"
+        android:hint="Password"
+        android:textColorHint="#CCCCCC"
+        android:textColor="#000000"
+        android:inputType="textPassword"
+        android:padding="14dp" />
+
+    <!-- Login Button -->
+    <Button
+        android:id="@+id/btnLogin"
+        android:layout_below="@id/passwordInput"
+        android:layout_marginTop="24dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Login"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/btn_primary" />
+
+    <!-- Footer Switch -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/switchText"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:text="Don't have an account? Register on Website"
+        android:textColor="#CCCCCC"
+        android:layout_marginBottom="24dp" />
+</RelativeLayout>

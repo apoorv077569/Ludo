@@ -21,6 +21,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Ludo"
 include(":app")
-include (":ludoModule")
+//include (":ludoModule")
 
 

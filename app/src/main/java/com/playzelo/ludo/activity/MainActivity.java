@@ -65,6 +65,9 @@ public class MainActivity extends AppCompatActivity {
 
         binding.btnPlayNow.setOnClickListener(v -> {
             Intent next = new Intent(MainActivity.this, TournamentsActivity.class);
+            next.putExtra("username",username);
+            next.putExtra("token",token);
+            next.putExtra("email",email);
             startActivity(next);
         });
     }
