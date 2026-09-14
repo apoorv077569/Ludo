@@ -10,8 +10,8 @@
         android:layout_width="180dp"
         android:layout_height="180dp"
         android:layout_centerHorizontal="true"
-        android:src="@drawable/play_zelo_logo"
-        android:contentDescription="Logo" />
+        android:src="@drawable/ludo_logo"
+        android:contentDescription="@string/app_logo" />
 
     <!-- App Name -->
     <TextView

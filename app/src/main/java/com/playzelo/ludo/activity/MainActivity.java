@@ -8,15 +8,19 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 import com.playzelo.ludo.R;
 import com.playzelo.ludo.databinding.ActivityMainBinding;
+import com.playzelo.ludo.utils.SessionManager;
 
 public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
-    private String username,email,token;
-    private String authToken;
+    private String username,email,token,avatar;
+    private String id;
+    private String photo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,11 +35,17 @@ public class MainActivity extends AppCompatActivity {
             username = intent.getStringExtra("username");
             email = intent.getStringExtra("email");
             token = intent.getStringExtra("token");
+            id = intent.getStringExtra("userId");
+            photo = intent.getStringExtra("photo");
+
         }
 
         Log.d("UserData", "Username: " + username);
         Log.d("UserData", "Email: " + email);
         Log.d("UserData", "Token: " + token);
+        Log.d("UserData", "Id: " + id);
+        Log.d("UserData", "Photo: " + photo);
+
 
 
         // Background Zoom Animation
@@ -63,12 +73,37 @@ public class MainActivity extends AppCompatActivity {
 
         binding.lottieDice.playAnimation();
 
+        SessionManager session = new SessionManager(this);
+
+        if (!session.isSessionValid()) {
+            Log.e("UserData", "❌ Session expired. Redirecting to login.");
+            Toast.makeText(this, "Session expired. Please login again.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+
         binding.btnPlayNow.setOnClickListener(v -> {
             Intent next = new Intent(MainActivity.this, TournamentsActivity.class);
             next.putExtra("username",username);
             next.putExtra("token",token);
             next.putExtra("email",email);
+            next.putExtra("userId",id);
+            next.putExtra("photo",photo);
             startActivity(next);
         });
+        binding.btnLogout.setOnClickListener(v-> redirectToLogin());
     }
+
+    private void redirectToLogin() {
+        SessionManager session = new SessionManager(this);
+        session.logout();
+
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
+
+
 }

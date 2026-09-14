@@ -1,22 +1,20 @@
 package com.playzelo.ludo.activity;
-import android.widget.Toast;
 
-import okhttp3.ResponseBody;
-import retrofit2.Call;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.android.gms.auth.api.signin.*;
-import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
 import com.playzelo.ludo.R;
 import com.playzelo.ludo.apiservice.ApiClient;
@@ -54,17 +52,22 @@ public class LoginActivity extends AppCompatActivity {
         binding.switchText.setOnClickListener(view ->
                 startActivity(new Intent(LoginActivity.this, SignupActivity.class))
         );
-        binding.btnPlayGames.setOnClickListener(v->startPlayGamesLogin());
+        binding.btnPlayGames.setOnClickListener(v -> startPlayGamesLogin());
     }
 
-    private void startPlayGamesLogin(){
-        if (googleSignInClient == null){
+    private void startPlayGamesLogin() {
+        if (googleSignInClient == null) {
             showToast("Google signin is not initialised");
             return;
         }
+        binding.progressPlayGames.setVisibility(View.GONE);
+        binding.progressPlayGames.setVisibility(View.VISIBLE);
+        binding.progressPlayGames.setVisibility(View.VISIBLE);
+        binding.btnPlayGames.setEnabled(false);
         Intent signInIntent = googleSignInClient.getSignInIntent();
-        startActivityForResult(signInIntent,RC_PLAY_GAMES);
+        startActivityForResult(signInIntent, RC_PLAY_GAMES);
     }
+
     private void setUpPlayGames() {
         String serverClientId = getString(R.string.server_client_id);
 
@@ -97,13 +100,15 @@ public class LoginActivity extends AppCompatActivity {
                 .build();
 
         googleSignInClient = GoogleSignIn.getClient(this, gso);
-    }    private void login() {
+    }
+
+    private void login() {
 
         String email = binding.emailInput.getText().toString().trim();
         String password = binding.passwordInput.getText().toString().trim();
 
-        binding.progressBar.setVisibility(View.VISIBLE);
         binding.btnLogin.setVisibility(View.GONE);
+        binding.progressBar.setVisibility(View.VISIBLE);
 
         if (email.isEmpty() || password.isEmpty()) {
             showToast("All fields are required");
@@ -168,6 +173,7 @@ public class LoginActivity extends AppCompatActivity {
                     // Send data to next screen
                     Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     intent.putExtra("username", user.getUsername());
+                    intent.putExtra("userId", user.getId());
                     intent.putExtra("email", user.getEmail());
                     intent.putExtra("token", token);
 
@@ -196,6 +202,7 @@ public class LoginActivity extends AppCompatActivity {
                     binding.btnLogin.setVisibility(View.VISIBLE);
                 }
             }
+
             @Override
             public void onFailure(@NonNull Call<UserResponse> call, @NonNull Throwable throwable) {
                 showToast("API Failure: " + throwable.getLocalizedMessage());
@@ -204,46 +211,93 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
     }
+
     private void showToast(String message) {
         Toast.makeText(LoginActivity.this, message, Toast.LENGTH_SHORT).show();
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+      @Override
+      protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+          super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == RC_PLAY_GAMES) {
-            Task<GoogleSignInAccount> task =
-                    GoogleSignIn.getSignedInAccountFromIntent(data);
+          if (requestCode == RC_PLAY_GAMES) {
+              Task<GoogleSignInAccount> task =
+                      GoogleSignIn.getSignedInAccountFromIntent(data);
 
-            try {
-                GoogleSignInAccount account = task.getResult(ApiException.class);
+              try {
+                  GoogleSignInAccount account = task.getResult(ApiException.class);
 
-                String googleId = account.getId();
-                String name = account.getDisplayName();
-                String email = account.getEmail();
-                String photoUrl = account.getPhotoUrl() != null
-                        ? account.getPhotoUrl().toString()
-                        : "";
+                  String googleId = account.getId();
+                  String name = account.getDisplayName();
+                  String email = account.getEmail();
+                  String photoUrl = account.getPhotoUrl() != null
+                          ? account.getPhotoUrl().toString()
+                          : "";
 
-                String idToken = account.getIdToken();
+                  String idToken = account.getIdToken();
 
-                // 🔥 send token + user data
-                sendTokenToBackend(
-                        idToken,
-                        googleId,
-                        name,
-                        email,
-                        photoUrl
-                );
+                  // 🔍 PRINT AUD FROM ID TOKEN (ANDROID)
+                  try {
+                      String[] parts = idToken.split("\\.");
+                      if (parts.length >= 2) {
+                          String payloadJson = new String(
+                                  android.util.Base64.decode(
+                                          parts[1],
+                                          android.util.Base64.URL_SAFE
+                                  )
+                          );
 
-            } catch (ApiException e) {
-                Toast.makeText(this,
-                        "Play Games sign-in failed: " + e.getStatusCode(),
-                        Toast.LENGTH_LONG).show();
-            }
-        }
-    }
+                          JSONObject payload = new JSONObject(payloadJson);
+
+                          Log.e("GOOGLE_AUD", "aud = " + payload.optString("aud"));
+                          Log.e("GOOGLE_AUD", "azp = " + payload.optString("azp"));
+                          Log.e("GOOGLE_AUD", "iss = " + payload.optString("iss"));
+                          Log.e("GOOGLE_AUD", "email = " + payload.optString("email"));
+                      }
+                  } catch (Exception e) {
+                      Log.e("GOOGLE_AUD", "Failed to decode ID token", e);
+                  }
+
+
+                  // ✅ DEBUG + GUARD (CORRECT PLACE)
+                  Log.e("GOOGLE_DEBUG", "ID TOKEN = " + idToken);
+                  Log.e("GOOGLE_DEBUG", "TOKEN LENGTH = " + (idToken != null ? idToken.length() : 0));
+
+                  if (idToken == null) {
+                      Toast.makeText(
+                              this,
+                              "Google ID Token is null. Add your email as TEST USER in OAuth screen.",
+                              Toast.LENGTH_LONG
+                      ).show();
+
+                      binding.progressPlayGames.setVisibility(View.GONE);
+                      binding.btnPlayGames.setEnabled(true);
+                      return; // ❗ STOP HERE
+                  }
+
+                  // 🔥 EXISTING LOGIC (UNCHANGED)
+                  sendTokenToBackend(
+                          idToken,
+                          googleId,
+                          name,
+                          email,
+                          photoUrl
+                  );
+
+              } catch (ApiException e) {
+                  binding.progressPlayGames.setVisibility(View.GONE);
+                  binding.btnPlayGames.setVisibility(View.VISIBLE);
+
+                  Toast.makeText(
+                          this,
+                          "Play Games sign-in failed: " + e.getStatusCode(),
+                          Toast.LENGTH_LONG
+                  ).show();
+              }
+          }
+      }
+
+
 
     private void sendTokenToBackend(
             String idToken,
@@ -252,6 +306,9 @@ public class LoginActivity extends AppCompatActivity {
             String email,
             String photoUrl
     ) {
+
+        binding.progressPlayGames.setVisibility(View.VISIBLE);
+        binding.btnPlayGames.setVisibility(View.GONE);
 
         SessionManager sessionManager = new SessionManager(this);
 
@@ -270,7 +327,7 @@ public class LoginActivity extends AppCompatActivity {
 
         ApiService apiService = ApiClient.getClient().create(ApiService.class);
 
-        apiService.playGamesLogin(body).enqueue(new Callback<ResponseBody>() {
+        apiService.playGamesLogin(body).enqueue(new Callback<>() {
             @Override
             public void onResponse(Call<ResponseBody> call,
                                    Response<ResponseBody> response) {
@@ -282,8 +339,19 @@ public class LoginActivity extends AppCompatActivity {
 
                         String jwt = obj.getString("token");
 
+                        JSONObject userObj = obj.getJSONObject("user");
+                        String mongoUserId = userObj.getString("id");
+
                         // 🔐 Save session
-                        sessionManager.saveToken(jwt);
+                        sessionManager.saveLoginSession(
+                                jwt,
+                                name,
+                                email
+                        );
+                        // 👉 ADD before any return
+                        binding.progressPlayGames.setVisibility(View.GONE);
+                        binding.btnPlayGames.setVisibility(View.VISIBLE);
+
 
                         // 🚀 SEND DATA VIA INTENT
                         Intent intent = new Intent(
@@ -292,8 +360,8 @@ public class LoginActivity extends AppCompatActivity {
                         );
 
                         intent.putExtra("token", jwt);
-                        intent.putExtra("googleId", googleId);
-                        intent.putExtra("name", name);
+                        intent.putExtra("userId", mongoUserId);
+                        intent.putExtra("username", name);
                         intent.putExtra("email", email);
                         intent.putExtra("photo", photoUrl);
 
@@ -306,14 +374,26 @@ public class LoginActivity extends AppCompatActivity {
                                 Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    Toast.makeText(LoginActivity.this,
-                            "Server rejected login",
-                            Toast.LENGTH_SHORT).show();
+                    try {
+                        String error = response.errorBody().string();
+                        Log.e("PLAY_GAMES", "Server Error: " + error);
+                        Toast.makeText(LoginActivity.this, error, Toast.LENGTH_LONG).show();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                    binding.progressPlayGames.setVisibility(View.GONE);
+                    binding.btnPlayGames.setVisibility(View.VISIBLE);
+                    binding.btnPlayGames.setEnabled(true);
                 }
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
+                binding.progressPlayGames.setVisibility(View.GONE);
+                binding.btnPlayGames.setVisibility(View.VISIBLE);
+                binding.btnPlayGames.setEnabled(true);
+
                 Toast.makeText(LoginActivity.this,
                         "Network error",
                         Toast.LENGTH_SHORT).show();

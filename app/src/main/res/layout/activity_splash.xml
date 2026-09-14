@@ -11,8 +11,8 @@
         android:layout_height="120dp"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="50dp"
-        android:src="@drawable/play_zelo_logo"
-        android:contentDescription="App Logo" />
+        android:src="@drawable/ludo_logo"
+        android:contentDescription="@string/app_logo" />
 
     <!-- Side-by-side Lottie animations -->
     <LinearLayout

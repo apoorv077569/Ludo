@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.airbnb.lottie.LottieAnimationView;
 import com.playzelo.ludo.R;
+import com.playzelo.ludo.utils.SessionManager;
 
 public class SplashActivity extends AppCompatActivity {
 
@@ -53,8 +54,19 @@ public class SplashActivity extends AppCompatActivity {
 
         // Move to next screen after 6 seconds
         new Handler().postDelayed(() -> {
-            startActivity(new Intent(SplashActivity.this, LoginActivity.class));
+
+            SessionManager session = new SessionManager(SplashActivity.this);
+
+            if (session.isLoggerIn()) {
+                // ✅ User already logged in
+                startActivity(new Intent(SplashActivity.this, MainActivity.class));
+            } else {
+                // ❌ Not logged in
+                startActivity(new Intent(SplashActivity.this, LoginActivity.class));
+            }
+
             finish();
+
         }, 6000);
     }
 }

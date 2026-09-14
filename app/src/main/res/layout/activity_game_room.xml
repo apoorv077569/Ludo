@@ -5,8 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#001B5D"
-    android:keepScreenOn="true"
-    >
+    android:keepScreenOn="true">
 
     <ImageView
         android:id="@+id/backButton"
@@ -42,7 +41,7 @@
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/ic_trophy" />
+                android:src="@drawable/ludo_logo" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -54,18 +53,9 @@
                     android:id="@+id/prizePoolLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Prize Pool"
+                    android:text="@string/playzelo_ludo"
                     android:textColor="#FFFFFF"
                     android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/prizePool"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="₹0.6"
-                    android:textColor="#FFD700"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
 
@@ -83,13 +73,14 @@
             android:id="@+id/leftPlayerName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
             android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text=""
             android:textColor="@color/white"
             android:textSize="12sp"
             android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end"
             app:layout_constraintEnd_toEndOf="@id/leftPlayerAvatar"
             app:layout_constraintStart_toStartOf="@id/leftPlayerAvatar"
             app:layout_constraintTop_toBottomOf="@id/leftPlayerAvatar" />
@@ -109,12 +100,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
+            android:layout_marginEnd="10dp"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text=""
             android:textColor="@color/white"
             android:textSize="12sp"
             android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end"
             app:layout_constraintEnd_toEndOf="@id/rightPlayerAvatar"
             app:layout_constraintStart_toStartOf="@id/rightPlayerAvatar"
             app:layout_constraintTop_toBottomOf="@id/rightPlayerAvatar" />
@@ -125,9 +117,8 @@
             android:layout_height="40dp"
             android:layout_marginStart="70dp"
             android:layout_marginBottom="35dp"
-            android:src="@drawable/dice_white"
             android:alpha="0.5"
-            android:enabled="false"
+            android:src="@drawable/dice_white"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
 
@@ -137,9 +128,8 @@
             android:layout_height="40dp"
             android:layout_marginEnd="70dp"
             android:layout_marginBottom="35dp"
-            android:src="@drawable/dice_white"
             android:alpha="0.5"
-            android:enabled="false"
+            android:src="@drawable/dice_white"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
@@ -199,13 +189,14 @@
             android:id="@+id/bottomLeftPlayerName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
             android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text=""
             android:textColor="@color/white"
             android:textSize="12sp"
             android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end"
             app:layout_constraintEnd_toEndOf="@id/bottomLeftAvatar"
             app:layout_constraintStart_toStartOf="@id/bottomLeftAvatar"
             app:layout_constraintTop_toBottomOf="@id/bottomLeftAvatar" />
@@ -225,12 +216,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
+            android:layout_marginEnd="10dp"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text=""
             android:textColor="@color/white"
             android:textSize="12sp"
             android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end"
             app:layout_constraintEnd_toEndOf="@id/bottomRightAvatar"
             app:layout_constraintStart_toStartOf="@id/bottomRightAvatar"
             app:layout_constraintTop_toBottomOf="@id/bottomRightAvatar" />
@@ -241,9 +233,8 @@
             android:layout_height="40dp"
             android:layout_marginStart="70dp"
             android:layout_marginBottom="60dp"
-            android:src="@drawable/dice_white"
             android:alpha="0.5"
-            android:enabled="false"
+            android:src="@drawable/dice_white"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
 
@@ -253,9 +244,8 @@
             android:layout_height="40dp"
             android:layout_marginEnd="70dp"
             android:layout_marginBottom="60dp"
-            android:src="@drawable/dice_white"
             android:alpha="0.5"
-            android:enabled="false"
+            android:src="@drawable/dice_white"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 

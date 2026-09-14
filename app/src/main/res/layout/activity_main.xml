@@ -6,20 +6,41 @@
     android:layout_height="match_parent">
 
     <!-- 🔹 Top Header -->
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#001B5D"
-        android:gravity="center"
         android:padding="16dp">
 
+        <!-- 🔴 Logout button (LEFT) -->
+        <ImageView
+            android:id="@+id/btnLogout"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/ic_logout"
+            android:tint="@android:color/white"
+            android:padding="4dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+
+        <!-- 🔵 Center Logo -->
         <ImageView
             android:layout_width="wrap_content"
             android:layout_height="60dp"
             android:src="@drawable/play_zelo_logo"
             android:scaleType="fitCenter"
-            android:contentDescription="PlayZelo Logo" />
-    </LinearLayout>
+            android:contentDescription="PlayZelo Logo"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
 
     <!-- 🔹 Main Content -->
     <FrameLayout

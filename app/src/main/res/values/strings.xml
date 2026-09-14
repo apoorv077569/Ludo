@@ -16,8 +16,12 @@
     9949468866-06vpfi3jqkv75onkn34prkkbc1i3imq6.apps.googleusercontent.com
 </string>
     <string name="login">Login</string>
+    <string name="playzelo_ludo">Playzelo Ludo</string>
+    <string name="app_logo">App Logo</string>
     <string-array name="Select_No_of_Players">
         <item>2 Players</item>
         <item>4 Players</item>
     </string-array>
+    <item name="dice_pulse_animator" type="id"/>
+    <item name="dice_rolling_animator" type="id"/>
 </resources>

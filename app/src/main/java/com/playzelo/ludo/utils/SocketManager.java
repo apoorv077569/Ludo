@@ -1,80 +1,60 @@
-//package com.playzelo.ludo.utils;
-//
-//import android.util.Log;
-//
-//import org.json.JSONObject;
-//
-//import java.util.Arrays;
-//
-//import io.socket.client.IO;
-//import io.socket.client.Socket;
-//import io.socket.emitter.Emitter;
-//
-//public class SocketManager {
-//    private static Socket mSocket;
-//    private static OnMessageReceivedListener mListener;
-//
-//    // Interface to define the callback for received messages
-//    public interface OnMessageReceivedListener {
-//        void onMessageReceived(String message);
-//    }
-//
-//    public static void setOnMessageReceivedListener(OnMessageReceivedListener listener) {
-//        mListener = listener;
-//    }
-//
-//    public static void initSocket(String serverUrl) {
-//        try {
-//            if (mSocket == null) {
-//                mSocket = IO.socket(serverUrl);
-//                Log.d("SocketManager", "Socket initialized with URL: " + serverUrl);
-//            }
-//        } catch (Exception e) {
-//            Log.e("SocketManager", "Error initializing socket: " + e.getMessage());
-//        }
-//    }
-//
-//    public static void connect() {
-//        if (mSocket != null && !mSocket.connected()) {
-//            mSocket.connect();
-//            Log.d("SocketManager", "Socket connected");
-//        }
-//    }
-//
-//    public static void disconnect() {
-//        if (mSocket != null && mSocket.connected()) {
-//            mSocket.disconnect();
-//            Log.d("SocketManager", "Socket disconnected");
-//        }
-//    }
-//
-//    public static void emit(String event, JSONObject data) {
-//        if (mSocket != null && mSocket.connected()) {
-//            mSocket.emit(event, data);
-//            Log.d("SocketManager", "Emit -> " + event + " : " + data.toString());
-//        } else {
-//            Log.e("SocketManager", "Emit failed, socket not connected: " + event);
-//        }
-//    }
-//
-//    public static void on(String event, Emitter.Listener listener) {
-//        if (mSocket != null) {
-//            Log.d("SocketManager", "Listening for event: " + event);
-//            mSocket.on(event, args -> {
-//                Log.d("SocketManager", "Event received: " + event + " -> " + Arrays.toString(args));
-//                listener.call(args); // forward event to registered listener
-//            });
-//        }
-//    }
-//
-//    public static void off(String event) {
-//        if (mSocket != null) {
-//            mSocket.off(event);
-//            Log.d("SocketManager", "Stopped listening for event: " + event);
-//        }
-//    }
-//
-//    public static Socket getSocket() {
-//        return mSocket;
-//    }
-//}
+package com.playzelo.ludo.utils;
+
+import android.util.Log;
+
+import java.net.URISyntaxException;
+import io.socket.client.IO;
+import io.socket.client.Socket;
+
+public class SocketManager {
+
+    private static final String TAG = "SocketManager";
+    private static final String SERVER_URL = "https://ludo-plum.vercel.app/";
+
+    private static Socket socket;
+
+    public static Socket getSocket() {
+        if (socket == null) {
+            try {
+                IO.Options options = new IO.Options();
+                options.forceNew = false;  // 🔥 Reuse connection
+                options.reconnection = true;
+                options.reconnectionAttempts = 5;
+                options.reconnectionDelay = 1000;
+
+                socket = IO.socket(SERVER_URL, options);
+                Log.d(TAG, "Socket instance created");
+            } catch (URISyntaxException e) {
+                Log.e(TAG, "Socket URI error: " + e.getMessage());
+            }
+        }
+        return socket;
+    }
+
+    public static void connect() {
+        if (socket != null && !socket.connected()) {
+            socket.connect();
+            Log.d(TAG, "Socket connecting...");
+        }
+    }
+
+    public static void disconnect() {
+        if (socket != null) {
+            socket.disconnect();
+            Log.d(TAG, "Socket disconnected");
+        }
+    }
+
+    public static boolean isConnected() {
+        return socket != null && socket.connected();
+    }
+
+    // 🔥 IMPORTANT: Reset socket when needed
+    public static void reset() {
+        if (socket != null) {
+            socket.disconnect();
+            socket.off();  // Remove all listeners
+            socket = null;
+        }
+    }
+}
